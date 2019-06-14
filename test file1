@@ -1,0 +1,2689 @@
+/*
+#########################################################################################
+Project Name..........: <USG Boral ? Global CRM Implementation> 
+File..................: <ctrlUBBP_QuoteCreationController> 
+Version...............: <1.0> 
+Created by............: <Infosys Technologies> 
+Author................: Sanjay Nandi
+Created Date..........: <20/07/2015> 
+Last Modified by......: <Infosys Technologies>
+Last Modified Date....: <27/07/2015 ? Initial Version>
+Description...........: <The ctrlUBBP_QuoteCreationController?.
+VERSION        AUTHOR                  DATE               DETAIL
+1.1            Aparna Shahapurkar      27-Dec-2015       AS20151207- Include Remarks in Quote items
+#########################################################################################*/
+
+global class ctrlUBBP_QuoteCreationController { 
+//AM20170404    
+public static Boolean sortAscending{get{if(sortAscending==null)sortAscending=true;return sortAscending;}set;}      
+public static String sortBy{get;set;}       
+public String previousSortBy{get;set;}       
+public string themedata{get;set;}
+List<AggregateResult> ProductCatTemp = new List<AggregateResult>();
+
+public List<SelectOption> ProductCatList
+{
+get
+{ 
+ ID id1=UserInfo.getUserId();
+ user u=[select country,id from user where id=:id1]; 
+    ProductCatTemp =[SELECT product_category__c pcc from products__c where product_category__c!=null and country__c=:u.country group by product_category__c   ];           
+    Map<String, String> ProductCatTemp1= new Map<String, String>();
+    ProductCatTemp1.put('--None--','--None--');
+    for(AggregateResult i:ProductCatTemp){
+        ProductCatTemp1.put(string.valueof(i.get('pcc')).touppercase(),string.valueof(i.get('pcc')).touppercase());
+    }
+    ProductCatList = new List<SelectOption>();
+    
+   
+    for(String temp : ProductCatTemp1.values())
+    {
+        ProductCatList.add(new SelectOption(string.valueof(temp),string.valueof(temp)));
+    }
+    return ProductCatList;
+}
+set;
+}
+//RB20170228
+
+public  Integer var{get;set;}      
+public  string aid;        
+public string cid;        
+public boolean mytempvalue{get;set;}      
+public boolean enabled{get;set;}       
+public  string tempvalue{get;set;}        
+public boolean mb {get; set;}           
+public string oppcountry{get;set;}      
+public string oppstate{get;set;}        
+public opportunity myopp{get;set;}        
+public string projcountry{get;set;}           
+public Integer colwidth{get;set;}           
+public string radiovalue{get;set;}        
+public account myacc{get;set;}         
+public string accountid1{get;set;}   
+public list<selectoption> acctselectList1{get;set;}    
+public list<selectoption> conselectList1{get;set;}        
+public string contactid1{get;set;}
+public String account { get; set; }
+
+public boolean check{get;set;}
+public boolean noGate{get;set;}
+public boolean firstpage{get;set;}
+public boolean secondPage{get;set;}
+public boolean thirdPage{get;set;}    
+public boolean countryFlag{get;set;}
+public boolean veitFlag{get;set;}
+public boolean IndoFlag{get;set;}
+public string urldata{get;set;}
+private Set<Id> prodtID;
+
+private map<string,set<String>> prodUOM;
+private boolean Flag;
+private Map<string,Integer> prodMap;
+private date today= date.today();
+
+public string terms_Cond{ get; set;}
+public boolean terms_CondCheck{ get; set;}    
+public String tabOpt {get;set;}
+public boolean hideTab{get;set;}  
+public id opportunityId;
+public Quote__c quoteVar{get;set;}
+public boolean selectAll{get;set;}
+public string prodName{get;set;}
+public string prodCategory{get;set;}
+public string prodID{get;set;}
+public string prodGrpName{get;set;}
+public string prodTypeName{get;set;}
+
+public boolean showsearch{get;set;}
+public boolean validflag{get;set;}
+public list<productWrapper> products{get;set;}
+public list<productWrapper> addedProducts{get;set;}
+public list<selectoption> acctselectList{get;set;}
+public list<selectoption> conselectList{get;set;}
+public list<selectoption> Termdetails{get;set;}
+public integer totalRecs = 0;
+public integer OffsetSize = 0;
+public integer LimitSize= 10;
+public integer limitsizePricelist=200;
+public Integer num { get; set; }
+public Integer x {get; set;}
+public string UserCountry{get;set;}
+public double TotalNetPrice{get;set;}
+public Decimal TotalDisPrice{get;set;}
+public Decimal ProductPrice{get;set;}
+public Decimal TotalContriMargin {get;set;}
+public Decimal TotalContriMarginPercent{get;set;}
+public Opportunity opp{get;set;}
+public string accountid{get;set;}
+public string contactid{get;set;}
+public map<id,Account> acclist{get;set;}
+private map<id,contact> conMap{get;set;}
+public string physicaladdress{get;set;}
+public string billingaddress{get;set;}
+public string pricelistName{get;set;}
+public string userprofileName{get;set;}
+public boolean  CmVisiblity{get;set;}
+private Quote__c clonedQuote;
+private boolean firstMargin;
+private boolean Productadded;
+public Map<string,List<UOM_Conversion__c>> UomconversionMap; 
+public boolean corpflag{get;set;}  
+public boolean corpqtyflag{get;set;}
+public Decimal PBqty;
+public Integer validDays;
+public list<selectoption> Statelist{get;set;} 
+public list<selectoption> citylist{get;set;}
+public Map<string,list<selectoption>>citymap;
+public List<selectoption>transportmode{get;set;}
+public Map<string,Decimal>Prodweight{get;set;}
+public string SelectedProductId{
+get;
+set {
+    SelectedProductId= value;
+}
+}
+public List<SelectOption> Statenames;
+
+public string getCurrencyValue(){
+string s;
+Schema.DescribeFieldResult fieldResult = Opportunity.CurrencyIsoCode.getDescribe();
+List<Schema.PicklistEntry> ple = fieldResult.getPicklistValues();
+for( Schema.PicklistEntry f : ple)
+{
+  //Concatinating currency values like  ( value "USD" label "U.S. Dollar" ) 
+  string finalvalue= f.getValue() + ' - ' + f.getLabel() ;
+if(f.getvalue()==QuoteVar.CurrencyIsoCode) s=finalvalue;
+}       
+return s;
+}
+public ctrlUBBP_QuoteCreationController(){}    
+  /*
+Function Description
+Name: ctrlUBBP_QuoteCreationController
+Parameter: Void
+Return Type: void
+Description : Constructor for initializing variables
+*/
+
+public ctrlUBBP_QuoteCreationController(ApexPages.StandardController controller){           
+themedata=UserInfo.getUiTheme();
+try{
+
+this.prodtID= new Set<Id>(); 
+colwidth=3;     
+Productadded=false; 
+tempvalue='';       
+var=0;       
+mytempvalue=false;       
+mb=true;        
+enabled=true;       
+radiovalue='Buyingaccount';
+firstpage=true;
+secondPage=false;
+thirdpage=false;
+firstMargin=false;
+corpflag=true;
+PBqty=0.0;
+corpqtyflag=true;
+hideTab=false;
+TotalNetPrice=0.0;
+ProductPrice=0.0;
+TotalContriMargin=0.0;
+TotalContriMarginPercent=0.0;
+acclist= new map<id,account>();
+conMap= new map<id,contact>();
+prodMap= new Map<string,Integer>();
+acctselectList= new list<selectoption>();
+acctselectList1= new list<selectoption>();
+quoteVar= new quote__c();
+clonedQuote=new quote__c();
+countryFlag=false;
+Flag=false;
+showsearch=false;
+validflag=false;
+CmVisiblity=false;
+addedProducts  = new list<productWrapper>();
+List<Tax__c> tax=new List<tax__c>();
+User currentUser=[Select Id,CurrencyIsoCode,country,ProfileId,profile.name,BU_Code__c from User where Id=:userinfo.getuserId()];
+UserCountry=currentUser.country;
+userprofileName=currentUser.profile.Name;
+veitFlag=(currentUser.country=='Vietnam')?true:false;
+Indoflag=(currentUser.country=='Indonesia')?true:false;
+for(permissionsetAssignment p:[select id, permissionset.label, assigneeId from Permissionsetassignment where  permissionset.label=:'CM Permission' and assigneeId = :userinfo.getuserId()])
+CmVisiblity=true;
+if(userProfileName=='System Administrator') CMVisiblity=true;
+opportunityId = apexpages.currentpage().getparameters().get(label.Quote_OpportunityID);
+opp= [select name,recordTypeId,recordType.name,physical_Country__c,CurrencyIsoCode,StageName,physical_Street__c,physical_Suburb_City__c,Physical_State_Province_Picklist__c,physical_Sub_District__c,physical_Zip_Postal_Code__c, BU_code__c,PB_Size_SQM__c,PB_Total_Quoted_SQM__c,PB_Balance_SQM__c from opportunity where id=:opportunityId ];
+List<Quotation_validity__mdt>qv= new List<Quotation_validity__mdt>();
+qv=[select DeveloperName,Valid_No_of_days__c from Quotation_validity__mdt qv where DeveloperName=:currentUser.BU_Code__c and  Active__c=TRUE limit 1];
+if(qv.size()>0) validDays=qv[0].Valid_No_of_days__c.intValue();
+QuoteVar.Preferred_project_name__c=opp.name;
+projcountry=opp.physical_Country__c;            
+check=staicServiceClass.checkaccess(currentUser,opp);
+
+UomconversionMap=new Map<string,List<UOM_Conversion__c>>();
+tax=[select id,tax__c from tax__c where start_date__c<=:today and end_date__c>=:today and country__c=:UserCountry];
+Quotevar.Opportunity_Name__c= opp.id;
+QuoteVar.Quotation_In_charge__c=currentUser.id; 
+Quotevar.CurrencyISOCode=opp.CurrencyISOCode;
+QuoteVar.Temporary_Value__c='Project'; 
+
+for(products__c pr:[select id,name,Product_Unique_Id__c,Product_Category__c,Country__c,(select Sales_Uom__c,Corp_uom__c,Conversion_Factor__c from Uom_Conversions__r where Corp_uom__c='M2') from Products__c where Active_Flag__c=TRUE AND BU_Code__c='VN' AND  Product_Category__c='Plasterboard'])
+{ if(pr.Uom_Conversions__r.size()!=0)
+UomconversionMap.put(pr.Product_Unique_Id__c,pr.Uom_Conversions__r); }     
+if(tax.size()>0) {Quotevar.tax__c= tax[0].tax__c;}
+else{Quotevar.tax__c=0.0;}
+acclist.putall([select id,ERP_Account_Number__c,name,Buying_Account__c,Customer_Price_Group__c,Account_Segmentation__c,Price_List__c,billingstreet,billingcity,billingstate,billingcountry,billingpostalcode,shippingpostalcode,shippingstreet,shippingcity,shippingcountry, shippingstate from account where id in(select Account__c from Account_Relationship__c where Related_Opportunity__c=:opportunityId)]);
+if(acclist.size()>0){  
+    for(id a: acclist.keyset()){     
+        acctselectList.add(new selectoption(a,acclist.get(a).name));
+        acctselectList1.add(new Selectoption(a,acclist.get(a).name));
+        }
+}
+if(acctselectList.size()>0)accountid=acctselectList[0].getvalue();
+if(acctselectList1.size()>0)accountid1=acctselectList1[0].getvalue();
+
+Statelist=new list<selectoption>();
+citylist= new list<selectoption>();
+transportmode=new list<selectoption>();
+Statelist.add(new selectoption('None','--None--'));
+citylist.add(new selectoption('None','--None--'));
+transportmode.add(new selectoption('None','--None--'));
+citymap=new Map<string,list<selectoption>>();
+set<string>stateset=new set<string>();
+Prodweight=new map<string,Decimal>();
+for(Address__c ad:[select State_Province__c,Physical_City__c from Address__c where country__c=:UserCountry])
+{
+stateset.add(ad.State_Province__c);
+list<selectoption>temp=new list<selectoption>();
+
+
+if(citymap.containskey(ad.State_Province__c))
+{
+temp.addall(citymap.get(ad.State_Province__c));
+} 
+else
+{
+temp.add(new selectoption('None','--None--'));
+}
+temp.add(new selectoption(ad.Physical_City__c ,ad.Physical_City__c ));
+citymap.put(ad.State_Province__c,temp);
+}
+
+for(string stname : stateset)
+{
+Statelist.add(new selectoption(stname ,stname ));
+
+} 
+if(citymap.containskey(opp.Physical_State_Province_Picklist__c))
+{
+QuoteVar.Project_State__c=opp.Physical_State_Province_Picklist__c;
+
+For(selectoption so:citymap.get(opp.Physical_State_Province_Picklist__c))
+{
+if(so.getvalue()==opp.physical_Suburb_City__c)
+
+}
+}
+if(opp.stageName!=null){
+
+  if(opp.stageName!='Lost' || opp.stageName!='Abandoned'){
+      if(opp.physical_country__c!=null){
+          if(opp.physical_country__c.equalsIgnoreCase('Australia')||opp.physical_country__c.equalsIgnoreCase('New Zealand')){
+            countryFlag=true;
+            ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.FATAL,label.Quote_CountryMessage+' '+opp.physical_country__c));
+          }  
+     
+      
+     
+  }
+  else if(opp.physical_country__c==null || opp.physical_country__c==''){
+  
+      firstpage=false;
+      secondPage=false;
+      thirdpage=false;
+      Flag=false;
+      ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.FATAL,label.Quote_CountryMessage1));
+   }
+   else{
+    flag=true;
+   }
+  }
+}
+
+
+if(opp.BU_code__c=='VN' && (opp.RecordType.name =='Project Sales Data Source' || opp.RecordType.name =='Project Sales Manual')){
+if(opp.PB_Size_SQM__c==null || opp.PB_Size_SQM__c==0){
+firstpage=false;
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.FATAL,label.Quote_Opportunity_PBsize));
+}
+}
+if(opp.stageName!=null){
+
+if(opp.stageName=='Lost' || opp.stageName=='Abandoned'){
+  firstpage=false;
+  secondPage=false;
+  thirdpage=false;
+  Flag=false;
+  ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.FATAL,label.Quote_Opportunity_Stage));
+}
+else{
+Flag=true;
+}
+}
+
+if(flag){   
+getTermdetails();       
+getcontactdetails1();
+if(apexpages.currentpage().getparameters().get('mode')!=null){
+        
+        string quoteid= Apexpages.currentPage().getparameters().get('id');
+        clonedQuote= [select id,CurrencyIsoCode,Account_Name__c,Terms_and_Conditions__c,Version_Number__c,Opportunity_Country__c,Preferred_Project_Name__c,Description__c,Comments__c,Temporary_Value__c,Contact_Person__c,Price_List__c,Status__c,Location__c,Preferred_Project_Address__c,Preferred_Billing_Address__c,Preferred_Physical_Address__c,
+                Opportunity_Name__c,price_list__r.name,Custom_Terms__c,Opportunity_Name__r.name,Revision__c,Tax__c,Parent_Quote__c,Terms_of_Payment__c,Validity_Date__c,Issued_Date__c,Preferred_Contact__c,Preferred_Account__c,
+                (select id,Additional_Discount__c,CurrencyIsoCode,product__c,Add_Disc_amount__c,Discount_Type__c,
+                 Quantity__c,UoM__c,Tax__c,Remarks__c from Quote_Items__R where Product__r.Active_Flag__c=TRUE) from Quote__c where id=:QuoteID];
+      Price_list__c pr=[select id,name from price_list__c where id=:clonedQuote.price_list__c];
+        if(apexpages.currentpage().getparameters().get('mode')=='clone'){
+            accountid=clonedQuote.Account_Name__c;
+            if(string.isnotblank(clonedQuote.Contact_Person__c)) contactid=clonedQuote.Contact_Person__c;
+            QuoteVar=clonedQuote.clone(false);                   
+            QuoteVar.Parent_Quote__c=null;
+            QuoteVar.id=null;
+            QuoteVar.Issued_Date__c=null;
+            QuoteVar.Validity_Date__c=null;                  
+             QuoteVar.Price_list__c=null;
+             //VB140119
+            //QuoteVar.Terms_of_Payment__c=null;                                
+            QuoteVar.Temporary_Value__c='Project';
+            if(tax.size()>0) {Quotevar.tax__c= tax[0].tax__c;}
+             else{Quotevar.tax__c=0.0;}
+        }
+        else if( apexpages.currentpage().getparameters().get('mode')=='clonetodiff'){                   
+            QuoteVar.price_list__c=null;
+            QuoteVar.Parent_Quote__c=null;
+            QuoteVar.Issued_Date__c=null;
+            QuoteVar.Validity_Date__c=null;                    
+            //QuoteVar.Terms_of_Payment__c=null;
+            //VB140119  
+            QuoteVar.Price_list__c=null;
+            QuoteVar.id=null;
+            QuoteVar.Temporary_Value__c='Project';
+            if(tax.size()>0) {Quotevar.tax__c= tax[0].tax__c;}
+             else{Quotevar.tax__c=0.0;}
+        }
+        
+    }
+    fetchcontacts();                
+    fetchcontacts1();
+    fetchprodweights();
+    
+      
+}
+ 
+}
+
+
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,' The following Error is Occured'+e+ 'in line number Number '+e.getlinenumber()+'. Please Contact Administrator'));
+}  
+}
+/*     
+Function Description        
+Name:Calculate corp qty        
+Parameter: Void     
+Return Type: void       
+Description : method  for Validating corp uom        
+*/ 
+
+public void validatecorpuom()
+{
+
+set<string>errorIDs=new set<string>();
+
+if(opp.RecordType.name =='Project Sales Data Source' || opp.RecordType.name =='Project Sales Manual'){
+for(productWrapper pw: addedproducts){
+if(pw.product.Product_Category__c=='Plasterboard' && UserCountry=='Vietnam')
+{
+
+if(!UomconversionMap.containskey(pw.product.Product_Unique_Id__c))
+errorIDs.add(pw.product.Product_ID__c);
+else{  
+List<Uom_Conversion__c>uomlist=UomconversionMap.get(pw.product.Product_Unique_Id__c);
+flag =false;
+for(Uom_Conversion__c um:uomlist)
+{
+if(um.Sales_Uom__c==pw.selectedUOM.split('--;--')[0]) 
+{
+flag =true;
+pw.confactor=um.Conversion_Factor__c;
+break;
+}}
+if(!flag)
+errorIDs.add(pw.product.Product_ID__c);
+}}}
+}
+if(errorIDs.size()>0)
+{
+string str='';
+for(string s:errorIDs){
+                str+=s+' ,';
+            }
+            
+string tempmsg=label.Quote_created_quantity+'  '+str+'  '+label.Quote_created_quantity2;
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.Error,tempmsg));
+corpflag=false;
+}
+else corpflag=true;
+}
+
+
+    /*
+    Function Description
+    Name: checkValidityDate
+    Parameter: Void
+    Return Type: void
+    Description : To verify validity date 
+    */
+     public void CheckValidityDate(){
+     if(validDays!=null && Opp.physical_Country__c!='Korea'){
+      if(quotevar.Validity_Date__c>=Date.today()+validDays){
+       string tempMsg=Label.Quote_ValidityDate3+' '+String.valueOf(ValidDays)+' '+Label.Quote_Validity_date4;
+       ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR,tempMsg));
+       
+       }
+     }
+     }
+
+
+/*     
+Function Description        
+Name:Calculate corp qty        
+Parameter: Void     
+Return Type: void       
+Description : method  for calculating Corp quantity        
+*/ 
+
+public void calculatecorpqty()
+{
+PBqty=0;
+for(productWrapper pw: addedproducts){
+   if(pw.product.Product_Category__c=='Plasterboard' && UserCountry=='Vietnam' && pw.confactor!=NULL && (opp.RecordType.name =='Project Sales Data Source' || opp.RecordType.name =='Project Sales Manual'))
+   {
+   PBqty=PBqty+(pw.confactor*pw.quantity);
+   }
+}
+
+If(opp.PB_Balance_SQM__c <PBqty && corpflag && PBqty>0)
+{
+if(!secondPage)
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.Error,label.Quote_created_quantity3));
+corpqtyflag=false;
+}
+else corpqtyflag=true;
+}
+
+/*     
+Function Description        
+Name:  fetchcontacts        
+Parameter: Void     
+Return Type: void       
+Description : method  for retrieving the contacts of related account        
+*/ 
+
+ 
+public void fetchcontacts(){ 
+try{  
+conselectList= new list<selectoption>();      
+conselectList.add(new selectoption('---None---','---None---'));     
+for(contact c: [select id, name from contact where accountid =:accountid]){     
+    conselectList.add(new selectoption(c.id,c.name));       
+    conmap.put(c.id,c);     
+}    
+getcontactdetails1();   }  
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+}     
+
+
+/*       
+Function Description        
+Name:  fetchcontacts1       
+Parameter: Void     
+Return Type: void       
+Description : method  for retrieving the contacts of end customer related account       
+*/      
+public void fetchcontacts1(){
+try{  
+conselectList1= new list<selectoption>();     
+conselectList1.add(new selectoption('---None---','---None---'));        
+if(accountid1!=null){       
+for(contact c: [select id, name from contact where accountid =:accountid1]){        
+    conselectList1.add(new selectoption(c.id,c.name));      
+    conmap.put(c.id,c);     
+}}   
+getcontactdetails1();}
+  catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+}
+
+
+public void fetchcitylist(){
+try{ 
+Quotevar.Project_City__c='None';
+citylist= new list<selectoption>();
+if(citymap.containskey(Quotevar.Project_State__c))
+citylist.addall(citymap.get(Quotevar.Project_State__c));  
+fetchtransportmode();   
+}
+  catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+}
+
+public void fetchtransportmode(){
+try{ 
+Quotevar.Transport_Mode__c='None';
+transportmode=new list<selectoption>();
+transportmode.add(new selectoption('None','--None--'));
+set<string>L5ids=new set<string>(); 
+for(productWrapper pw: addedproducts){
+system.debug('test ERP L5'+pw.product.ERP_Product_Category_L5_ID__c);
+L5ids.add(pw.product.ERP_Product_Category_L5_ID__c);
+}
+List<Transport_Mode__c>translist1=[select Transportation_Mode__c,ERP_Product_Catergory_L5_ID__c,Physical_State_Province__c,Country__c from Transport_Mode__c where Physical_State_Province__c=:Quotevar.Project_State__c and country__c=:UserCountry and ERP_Product_Catergory_L5_ID__c in:L5ids];
+List<Transport_Mode__c>translist2=[select Transportation_Mode__c,ERP_Product_Catergory_L5_ID__c,Physical_State_Province__c,Country__c from Transport_Mode__c where Physical_State_Province__c=:Quotevar.Project_State__c and country__c=:UserCountry and ERP_Product_Catergory_L5_ID__c=''];
+if(translist1.size()>0)
+{
+for(Transport_Mode__c TM:translist1)
+{
+transportmode.add(new selectoption(TM.Transportation_Mode__c,TM.Transportation_Mode__c));
+}   
+}
+else if(translist2.size()>0)
+{
+for(Transport_Mode__c TM:translist2)
+{
+transportmode.add(new selectoption(TM.Transportation_Mode__c,TM.Transportation_Mode__c));
+}
+   
+}
+fetchtransportcost();
+
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+}
+
+public void fetchtransportcost(){
+try{ 
+
+List<Transportation_Cost__c>TClist=[select Country__c,City__c,State_Province__c,Transportation_Mode__c,Transportation_Cost__c,Originating_Plant__c from Transportation_Cost__c where country__c=:UserCountry and State_Province__c=:Quotevar.Project_State__c and City__c=:Quotevar.Project_City__c and Transportation_Mode__c=:Quotevar.Transport_Mode__c limit 1];
+if(TClist.size()>0)
+{
+Quotevar.Originating_Plant__c=TClist[0].Originating_Plant__c;
+for(productWrapper pw: addedproducts){
+pw.freightcost=TClist[0].Transportation_Cost__c;
+}}
+else
+{
+Quotevar.Originating_Plant__c='';
+for(productWrapper pw: addedproducts){
+pw.freightcost=0.0;
+}
+}
+fetchtransfercost();
+calculateNetPrice();
+
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+}
+
+public void fetchtransfercost()
+{
+try
+{
+Map<string,Decimal>ERPL5Tfcost=new Map<string,decimal>();
+Map<string,Decimal>productidcost=new Map<string,Decimal>();
+set<string>ERPL5idset=new set<string>();
+set<string>productidset=new set<string>();
+for(productWrapper pw: addedproducts){
+ERPL5idset.add(pw.product.ERP_Product_Category_L5_ID__c);
+productidset.add(pw.product.Product_ID__c);
+}
+For(Stock_Transfer_Cost__c STC :[select Amount__c,ERP_Product_Category_L5_Id__c,Product_ID__c,Destination_Plant__c,Country__c from Stock_Transfer_Cost__c where country__c=:UserCountry and Destination_Plant__c=:Quotevar.Originating_Plant__c and (Product_ID__c in:productidset or ERP_Product_Category_L5_Id__c in:ERPL5idset)])
+{
+if(STC.ERP_Product_Category_L5_Id__c!=null)
+ERPL5Tfcost.put(STC.ERP_Product_Category_L5_Id__c,STC.Amount__c);
+else if(STC.Product_ID__c!=null)
+productidcost.put(STC.Product_ID__c,STC.Amount__c);
+}
+for(productWrapper pw: addedproducts){
+if(ERPL5Tfcost.containskey(pw.product.ERP_Product_Category_L5_ID__c))
+pw.Transfercost=ERPL5Tfcost.get(pw.product.ERP_Product_Category_L5_ID__c);
+else if(productidcost.containskey(pw.product.Product_ID__c))
+pw.Transfercost=productidcost.get(pw.product.Product_ID__c);
+else
+pw.Transfercost=0.0;
+}
+
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+}
+
+public void fetchprodweights()
+{
+try{
+For(UOM_Conversion__c um:[select Conversion_Factor__c,Sales_Uom__c,product__r.Product_Unique_Id__c from UOM_Conversion__c where Product__r.Country__c=:Usercountry and  Product__r.Active_Flag__c=TRUE and Type__c='Transport'])
+{
+string tempkey=um.product__r.Product_Unique_Id__c+'-'+um.Sales_Uom__c;
+Prodweight.put(tempkey,um.Conversion_Factor__c);
+}
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+
+}
+/* 
+Function Description
+Name: getSelectedProductUOM
+Parameter: Void
+Return Type: void
+Description : method for fetching the unit of measurement of a selected products
+*/
+public void getSelectedProductUOM(){
+try{
+for(productWrapper pw: addedproducts)  { 
+    pw.quantity=pw.quantity;  
+    pw.currencycode=QuoteVar.CurrencyISOCode ;        
+    pw.price=decimal.valueof(pw.selectedUOM.split('--;--')[1]);
+    if(userCountry=='Philippines'){
+      pw.price= (pw.price+((pw.price*(QuoteVar.Tax__c!=null?QuoteVar.Tax__c:0.0))/100)).setScale(2, RoundingMode.HALF_UP);
+           }
+    Decimal.valueOF(pw.price).setscale(2); 
+    pw.VC=decimal.valueof(pw.selectedUOM.split('--;--')[2]);
+    pw.selectedUomValue=pw.selectedUOM.split('--;--')[0];
+    if(prodweight.containskey(pw.product.Product_Unique_Id__c+'-'+pw.selectedUOM.split('--;--')[0]))
+     pw.Wgtfactor=prodweight.get(pw.product.Product_Unique_Id__c+'-'+pw.selectedUOM.split('--;--')[0]);
+     else
+     pw.Wgtfactor=0.0;           
+            calculateNetPrice();
+
+} 
+validatecorpuom();
+calculatecorpqty(); 
+
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+}
+
+/* 
+Function Description
+Name: getProductUOM
+Parameter: Void
+Return Type: void
+Description : method for fetching the unit of measurement of  products
+*/
+
+public void  getProductUOM(){
+try{
+for(productWrapper pw: products)  { 
+             
+        pw.price=decimal.valueof(pw.selectedUOM.split('--;--')[1]);
+        pw.VC=decimal.valueof(pw.selectedUOM.split('--;--')[2]);
+        if(userCountry=='Philippines'){
+           pw.price= (pw.price+((pw.price*(QuoteVar.Tax__c!=null?QuoteVar.Tax__c:0.0))/100)).setScale(2, RoundingMode.HALF_UP);
+           }
+        Decimal.valueOF(pw.price).setscale(2); 
+        pw.selectedUomValue=pw.selectedUOM.split('--;--')[0];
+   }
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+}   
+
+/* 
+Function Description
+Name: getDiscount
+Parameter: Void
+Return Type: void
+Description : method for getting Rebate and transportcost
+*/
+public void getDiscount(){
+string erpAccNo=acclist.get(accountid).ERP_Account_Number__c; 
+List<Rebate__c>RebateList=[select ERP_Account_Number__c,ERP_Product_Category_L1_ID__c,ERP_Product_Category_L2_ID__c,ERP_Product_Category_L3_ID__c,Percentage__c from Rebate__c where Country__c=:UserCountry and ERP_Account_Number__c=:erpAccNo];  
+List<Transportation_Cost__c>Translist=[select City__c,Transportation_Cost__c,Country__c,ERP_Account_number__c,State_Province__c,Freight_Factor__c from Transportation_Cost__c where Country__c=:UserCountry and ERP_Account_Number__c=:erpAccNo];  
+
+// added to override Account rebate with product rebate
+Map<string,decimal>rebatemap=new Map<string,decimal>();
+For(Rebate__c rb:[select Percentage__c,Product_Id__c,Country__c from Rebate__c where Country__c=:UserCountry and product_Id__c in:prodMap.keyset()])
+{rebatemap.put(rb.Product_Id__c,rb.Percentage__c); }
+
+for(productWrapper pw: addedproducts){
+if(RebateList.size()>0)  pw.YearlyRBT= RebateList[0].Percentage__c;
+if(Translist.size()>0)   pw.freightfactor=Translist[0].Freight_Factor__c;   
+ if(rebatemap.containskey(pw.product.Product_Unique_Id__c)) pw.YearlyRBT=rebatemap.get(pw.product.Product_Unique_Id__c);            
+}
+}
+
+/* 
+Function Description
+Name: secondButton
+Parameter: Void
+Return Type: void
+Description : method for redirecting the quote first page to next  page
+*/
+
+public void secondButton(){ 
+try{
+
+boolean flagSecBut=true;
+if(acclist.size()==0)
+{
+
+flagSecBut=false;
+secondPage =false;
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.error,label.Quote_LinkedAccount));  
+}
+
+
+if(((quotevar.Dealer_Margin__c<0)||(quotevar.Dealer_Margin__c>100)) && opp.physical_country__c.equalsIgnoreCase('Indonesia')){
+    
+    ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR,label.Quote_DealerMargin2+ ' ' +quotevar.Dealer_Margin__c ));
+    quotevar.Dealer_Margin__c=0.0;
+    flagSecBut=false;
+}
+
+if(!(validation('Price List Null') )){
+   flagSecBut=false;
+}
+if(!(validation('Parent Quote Null') )){
+flagSecBut=false;
+}
+if(! validation('Terms of Payment') ){
+flagSecBut=false;
+}
+
+if(! validation('Validity Date')){
+flagSecBut=false;
+}
+
+if(quotevar.Validity_Date__c<=quotevar.Issued_Date__c){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR,label.Quote_ValidityDate1));
+
+flagSecBut=false;
+}
+if(validDays!=null && Opp.physical_Country__c!='Korea'){
+if(quotevar.Validity_Date__c>=Date.today()+validDays){
+       string tempMsg=Label.Quote_ValidityDate3+'  '+String.valueOf(ValidDays)+' '+Label.Quote_Validity_date4;
+       ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR,tempMsg));
+       
+       flagSecBut=false;
+   } }
+
+if(flagSecBut){
+
+if(addedProducts.size()>0)
+{
+set<string>tempprodIds=new set<string>();
+map<string,set<String>> tempprodUOM= new map<string,set<String>>();
+For(Productwrapper prod:addedproducts)
+tempprodIds.add(prod.product.id);    
+
+getSelectedProdUOM(tempprodIds,tempprodUOM);         
+   
+For(Productwrapper pw:addedproducts)
+{
+if(tempprodUOM.size()>0){ 
+               if(tempprodUOM.containskey(pw.product.id))
+               
+               for(string s:tempprodUOM.get(pw.product.id)){
+                                             
+                   if(pw.selectedUomValue==s.split('--;--')[0]){                               
+                        pw.selectedUOM=s;
+                        pw.price=decimal.valueof(s.split('--;--')[1]);
+                        pw.vc=decimal.valueof(s.split('--;--')[2]);
+                        flag=true;
+                   }
+                   if(userCountry=='Philippines'){          
+                    pw.price= (pw.price+((pw.price*(QuoteVar.Tax__c!=null?QuoteVar.Tax__c:0.0))/100)).setScale(2, RoundingMode.HALF_UP);
+                   }
+               }
+} } }
+
+   
+    getAllProducts();
+    intialParser();           
+        firstpage=false;
+        secondPage=true;
+        thirdpage=false; 
+        validatecorpuom();
+        calculatecorpqty();  
+}
+}
+catch(exception e){
+
+}
+}
+
+
+/* 
+Function Description
+Name: thirdButton
+Parameter: Void
+Return Type: void
+Description : method for redirecting the quote second page to third  page
+*/
+public void thirdButton(){
+try{
+//RB20170228
+Quotevar.Preferred_Account__c=accList.get(accountid).name;
+
+
+firstpage=false;
+secondPage=false;
+thirdpage=true; 
+getdiscount();
+calculateNetPrice();
+firstMargin=true;
+validatecorpuom();
+calculatecorpqty();
+fetchtransportmode();
+}
+catch(exception e){
+
+}
+}
+
+/* 
+Function Description
+Name: previouspage1
+Parameter: Void
+Return Type: void
+Description : method for redirecting the quote third page to  first  page
+*/
+
+public void previouspage1(){
+try{
+firstpage=true;
+secondPage=False;
+thirdpage=false;
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+
+}      
+
+/* 
+Function Description
+Name: previouspage2
+Parameter: Void
+Return Type: void
+Description : method for redirecting the quote third page to second  page
+*/
+
+public void previouspage2(){
+try{
+secondButton();
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+
+} 
+
+
+/*
+Function Description
+Name:  getcontactdetails1
+Parameter: Void
+Return Type: void
+Description : method  for fetching the contact details.
+*/
+
+public void getcontactdetails1(){
+
+try{
+if(radiovalue=='endcustomer'){
+
+aid= accountid1;
+cid=contactid1;}
+
+else if(radiovalue=='Buyingaccount' ){ 
+  aid=accountid;
+  cid=contactid;
+}
+PhysicalAddress= acclist.containskey(aid)?((string.isnotblank(acclist.get(aid).shippingstreet)?acclist.get(aid).shippingstreet+', ':'')+
+(string.isnotblank(acclist.get(aid).shippingcity)?acclist.get(aid).shippingcity+', ':'')+
+(string.isnotblank(acclist.get(aid).shippingstate)?acclist.get(aid).shippingstate+', ':'')+        
+(string.isnotblank(acclist.get(aid).shippingpostalcode)?acclist.get(aid).shippingpostalcode+', ':'')+
+(string.isnotblank(acclist.get(aid).shippingcountry)?acclist.get(aid).shippingcountry:'')):'';
+       
+myacc=new Account();
+myacc=[select shippingcountry,shippingcity,shippingstreet,shippingstate,shippingpostalcode,Billingstreet,Billingstate,Billingcity,Billingcountry,Billingpostalcode from account where id=:aid];
+myopp =new opportunity();
+myopp=opp;
+
+oppcountry=myopp.Physical_Country__c ;
+oppstate=myopp.Physical_State_Province_Picklist__c;
+
+BillingAddress= acclist.containskey(aid)?((string.isnotblank(acclist.get(aid).Billingstreet)?acclist.get(aid).Billingstreet+', ':'')+
+(string.isnotblank(acclist.get(aid).Billingcity)?acclist.get(aid).Billingcity+', ':'')+
+(string.isnotblank(acclist.get(aid).Billingstate)?acclist.get(aid).Billingstate+', ':'')+        
+(string.isnotblank(acclist.get(aid).Billingpostalcode)?acclist.get(aid).Billingpostalcode+', ':'')+
+(string.isnotblank(acclist.get(aid).Billingcountry)?acclist.get(aid).Billingcountry:'')):'';
+
+
+Quotevar.Preferred_Account__c= acclist.get(aid).name;
+
+if(cid!='---None---' && cid!=null){
+Quotevar.Preferred_Contact__c= conMap.get(cid).name; }
+
+else
+{Quotevar.Preferred_Contact__c='';
+}
+if(Quotevar.Preferred_Physical_Address__c!=null){Quotevar.Preferred_Physical_Address__c=PhysicalAddress; }        
+else{Quotevar.Preferred_Physical_Address__c=PhysicalAddress; }
+
+if(Quotevar.Preferred_Project_Name__c!=null){ }        
+else{         
+ Quotevar.Preferred_Project_Name__c=opp.name;
+ }
+
+if(Quotevar.Preferred_Billing_Address__c!=null){Quotevar.Preferred_Billing_Address__c=BillingAddress; }        
+else{Quotevar.Preferred_Billing_Address__c=BillingAddress; }
+
+if(Quotevar.Preferred_Project_Address__c!=null){ }        
+else{
+Quotevar.Preferred_Project_Address__c='';
+if(opp.physical_Street__c!=Null)
+{
+Quotevar.Preferred_Project_Address__c  = Quotevar.Preferred_Project_Address__c+opp.physical_Street__c + ',';
+}
+if(opp.physical_Suburb_City__c !=Null)
+{
+Quotevar.Preferred_Project_Address__c  = Quotevar.Preferred_Project_Address__c+opp.physical_Suburb_City__c + ',';
+}
+if(opp.Physical_State_Province_Picklist__c !=Null)
+{
+Quotevar.Preferred_Project_Address__c  = Quotevar.Preferred_Project_Address__c+opp.Physical_State_Province_Picklist__c + ',' ;
+}
+if(opp.physical_Sub_District__c !=Null)
+{
+Quotevar.Preferred_Project_Address__c  = Quotevar.Preferred_Project_Address__c+opp.physical_Sub_District__c + ',';
+}
+if(opp.physical_Zip_Postal_Code__c !=Null)
+{
+Quotevar.Preferred_Project_Address__c  = Quotevar.Preferred_Project_Address__c+opp.physical_Zip_Postal_Code__c + ',';
+}
+
+Quotevar.Preferred_Project_Address__c =Quotevar.Preferred_Project_Address__c +opp.physical_country__c;
+
+} 
+      
+if(string.isnotblank(Accountid)  && addedproducts.size()==0) 
+
+QuoteVar.price_list__c= acclist.get(accountid).price_list__c;
+
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+
+}
+/* 
+Function Description
+Name: PreferedAcountUpdate
+Parameter: Void
+Return Type: void
+Description : method for fetching the prefered account details of the quote
+*/
+
+public void PreferedAcountUpdate(){
+try{
+       
+ if(string.isnotblank(accountid) ){
+        Quotevar.Preferred_Account__c=acclist.get(accountid).name; }
+ else { 
+     ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR,label.Quote_LinkedAccount));
+     countryFlag=true;
+ }
+
+if( string.isnotblank(accountid)){
+  if((string.isnotblank(contactid) && contactid!='---None---')&& conmap.size()>0 ) {
+    
+        if(conMap.containskey(contactid))
+             Quotevar.Preferred_Contact__c= conmap.get(contactId).name; }
+        else{                     
+             Quotevar.Preferred_Contact__c='';
+        }
+}
+       
+}
+catch(Exception e){
+    countryFlag=true;
+    ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR,'Hello '+ e + e.getlinenumber()));
+}  
+}
+
+/* 
+Function Description
+Name: displaypricelist
+Parameter: Void
+Return Type: void
+Description : method for displaying pricelist
+*/
+public void displaypricelist()  {
+try{
+Quotevar.Price_List__c=null;}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+
+}
+/* 
+Function Description
+Name: getTermdetails
+Parameter: Void
+Return Type: void
+Description : method for fetching the terms and conditins details of the quote
+*/
+
+public void getTermdetails(){
+try{
+list<Term_of_Payment__c> top=[select ToP_Description__c from Term_of_Payment__c where BU_code__c=:opp.BU_code__c order by Order__c ASC];     
+Termdetails= new list<selectoption>();
+Termdetails.add(new selectoption('---None---','---None---'));
+for(Term_of_Payment__c t:top){
+  Termdetails.add(new selectoption(t.ToP_Description__c,t.ToP_Description__c));       
+}    
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+
+} 
+public pageReference changeddisctype(){
+try{
+
+for(productWrapper pr :addedProducts)
+{
+if(pr.product.Product_Unique_Id__c==selectedProductID)
+{
+
+pr.AdditionalDis=0.0;
+pr.AdditionalDisAmount=0.0;
+netPriceAfterError();
+} 
+} 
+return null;
+}
+catch(Exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,' The following Error is Occured'+e+ 'in line number Number '+e.getlinenumber()+'. Please Contact Administrator'));
+return null;
+}
+}
+
+/* 
+Function Description
+Name: calculateNetPrice
+Parameter: Void
+Return Type:pageReference
+Description : method for caluculating the net price of products  of the quote
+*/
+
+public pageReference calculateNetPrice(){
+try{
+TotalNetPrice=0.0;
+TotalDisPrice=0.0;
+totalContriMargin=0.0;
+TotalContriMarginPercent=0.0;
+for(productWrapper pr :addedProducts)
+{
+   boolean Flag=true;
+   if( pr.AdditionalDis>100){
+        Flag=false;
+        pr.AdditionalDis=0.0;
+        netPriceAfterError();
+        ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR,label.Quote_total_discount)); 
+    } 
+       if((pr.Quantity<0 || pr.Quantity>10000000)){                      
+        Flag=false;
+        netPriceAfterError();
+        ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR,label.Quote_QuantityError));
+    }
+    
+    if(pr.AdditionalDis!=NULL  && quotevar.Dealer_Margin__c!=null && usercountry.equalsIgnoreCase('Indonesia') && firstMargin && pr.discountType=='in Percent'){
+        if(pr.AdditionalDis<quotevar.Dealer_Margin__c){
+            quotevar.Dealer_Margin__c=0.0;
+            netPriceAfterError();
+            ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.Warning,label.Quote_DealerMargin3));
+            Flag=false;
+        }
+        double dis= (pr.AdditionalDis!=null?pr.AdditionalDis:0.0)-(quotevar.Dealer_Margin__c!=null?quotevar.Dealer_Margin__c:0.0);
+        if((dis>100)){
+            Flag=false;
+            pr.AdditionalDis=0.0;
+            netPriceAfterError();
+            ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR,label.Quote_total_discount)); 
+        }
+    }
+   
+ if((quotevar.Dealer_Margin__c<0)||(quotevar.Dealer_Margin__c>100)){
+    quotevar.Dealer_Margin__c=0.0;
+    netPriceAfterError();
+    Flag=false;
+    ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR,label.Quote_DealerMargin2));
+ }
+  if(opp.physical_Country__c=='Vietnam'&& pr.YearlyRBT!=NULL)
+    {
+    double totaldis=(pr.AdditionalDis!=null?pr.AdditionalDis:0.0)+(pr.YearlyRBT!=null?pr.YearlyRBT:0.0);
+       if(pr.YearlyRBT<0 || pr.YearlyRBT>100){
+        pr.YearlyRBT=0.0;
+        netPriceAfterError();
+        Flag=false;
+        ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR,label.Quote_total_discount));
+         }
+   if( totaldis>100 && pr.YearlyRBT<100 && pr.AdditionalDis<100 )
+    {
+            Flag=false;
+            pr.YearlyRBT=0.0;
+            pr.AdditionalDis=0.0;
+            netPriceAfterError();
+            ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR,label.Quote_total_discount));
+    
+    }
+    }
+    
+    if(flag){
+    pr.NetPrice= pr.Price * pr.quantity ;  
+    
+    double adddis=(pr.AdditionalDis!=null?pr.AdditionalDis:0.0);            
+    if(Opp.physical_Country__c=='Vietnam'){
+                                  
+    double adddisamount=(pr.discountType=='in Amount')?pr.AdditionalDisAmount:(pr.Price * adddis/100);                       
+    pr.DiscountedPrice=Decimal.valueOf(pr.Price-adddisamount).setScale(2,RoundingMode.HALF_UP);
+    double TotalRBT=(pr.YearlyRBT!=null?pr.YearlyRBT:0.0);      
+    pr.Rebate=(pr.DiscountedPrice * TotalRBT/100); 
+    pr.Invoiceprice=pr.DiscountedPrice;         
+    pr.DiscountedPrice=Decimal.valueOf(pr.DiscountedPrice-pr.Rebate).setScale(2,RoundingMode.HALF_UP); 
+    pr.TotalDisount=Decimal.valueOf((1-(pr.DiscountedPrice/pr.Price))*100).setScale(2,RoundingMode.HALF_UP);
+    pr.NetDiscountedPrice= ((pr.DiscountedPrice*pr.quantity).setScale(2, RoundingMode.HALF_UP));                  
+    }
+    else
+    {
+    if(pr.discountType=='in Amount')
+    pr.DiscountedPrice= pr.Price-pr.AdditionalDisAmount;
+    else            
+    pr.DiscountedPrice= (decimal.valueof(pr.Price-(pr.Price * adddis/100)));
+    pr.NetDiscountedPrice= (pr.DiscountedPrice*pr.quantity).setScale(2, RoundingMode.HALF_UP);   
+    pr.DiscountedPrice=Decimal.valueOf(pr.DiscountedPrice).setScale(2, RoundingMode.HALF_UP);  
+    }
+    if(pr.VC!=null) 
+    pr.ContriMargin=(userCountry=='Indonesia'|| userCountry=='Vietnam' || userCountry=='Thailand')?pr.NetDiscountedPrice -(pr.vc*pr.quantity):0.0; 
+    
+    If(userCountry=='Indonesia' && pr.ContriMargin!=null)
+    {
+    if(pr.YearlyRBT==NULL) pr.YearlyRBT=0.0;
+   // if(pr.freightfactor==NULL) pr.freightfactor=0.0;
+   if(pr.freightcost==NULL) pr.freightcost=0.0;
+   if(pr.Transfercost==NULL) pr.Transfercost=0.0;
+   if(pr.Wgtfactor==NULL) pr.Wgtfactor=0.0;
+    pr.Rebate=(pr.DiscountedPrice*pr.YearlyRBT/100).setScale(2, RoundingMode.HALF_UP);             
+   // pr.freightcost=((pr.freightfactor/100)*pr.Price).setScale(2, RoundingMode.HALF_UP); 
+    //pr.ContriMargin=(pr.ContriMargin-((pr.Rebate+pr.freightcost)*pr.quantity)).setScale(2, RoundingMode.HALF_UP); 
+    
+    system.debug('pr.freightcost------'+pr.freightcost+'pr.Transfercost------'+pr.Transfercost+'pr.Wgtfactor----'+pr.Wgtfactor+'pr.quantity---'+pr.quantity);
+    Decimal transportcost=((pr.freightcost+pr.Transfercost)*pr.Wgtfactor)*pr.quantity;
+    pr.ContriMargin=(pr.ContriMargin-(pr.Rebate*pr.quantity)-transportcost).setScale(2, RoundingMode.HALF_UP);
+    }
+    if(pr.ContriMargin!=null)  
+    pr.contriMarginPercent= ((pr.ContriMargin/pr.NetDiscountedPrice)*100).setScale(2,RoundingMode.HALF_UP);
+    if(pr.ContriMargin!=null)  
+    TotalContriMargin=TotalContriMargin+pr.ContriMargin;              
+    TotalDisPrice+= pr.NetDiscountedPrice;
+    TotalNetPrice+= pr.NetPrice;
+    ProductPrice= (TotalDisPrice+((TotalDisPrice*(QuoteVar.Tax__c!=null?QuoteVar.Tax__c:0.0))/100)).setScale(2, RoundingMode.HALF_UP);
+    IF(TotalNetPrice!=0)
+    TotalContriMarginPercent=((totalContriMargin/TotalDisPrice)*100).setScale(2, RoundingMode.HALF_UP); 
+    }
+}   
+
+return null;
+}
+catch(Exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,' The following Error is Occured'+e+ 'in line number Number '+e.getlinenumber()+'. Please Contact Administrator'));
+return null;
+}
+}
+
+
+/* 
+Function Description
+Name: netPriceAfterError
+Parameter: Void
+Return Type:void
+Description : method for caluculating the net price of products  after error of the quote
+*/
+
+public void netPriceAfterError(){
+try{
+TotalNetPrice=0.0;
+TotalDisPrice=0.0;
+TotalContriMargin=0.0;
+for(productWrapper pr :addedProducts)
+{
+    pr.NetPrice= pr.Price * pr.quantity ;  
+   
+    double adddis=(pr.AdditionalDis!=null?pr.AdditionalDis:0.0);            
+    if(Opp.physical_Country__c=='Vietnam'){             
+    double adddisamount=(pr.discountType=='in Amount')?pr.AdditionalDisAmount:(pr.Price * adddis/100);            
+    pr.DiscountedPrice=Decimal.valueOf(pr.Price-adddisamount).setScale(2,RoundingMode.HALF_UP);
+    double TotalRBT=(pr.YearlyRBT!=null?pr.YearlyRBT:0.0);      
+    pr.Rebate=(pr.DiscountedPrice * TotalRBT/100); 
+    pr.Invoiceprice=pr.DiscountedPrice;         
+    pr.DiscountedPrice=Decimal.valueOf(pr.DiscountedPrice-pr.Rebate).setScale(2,RoundingMode.HALF_UP); 
+    pr.TotalDisount=Decimal.valueOf((1-(pr.DiscountedPrice/pr.Price))*100).setScale(2,RoundingMode.HALF_UP);
+    pr.NetDiscountedPrice= ((pr.DiscountedPrice*pr.quantity).setScale(2, RoundingMode.HALF_UP));                  
+    }
+    else
+    {
+    if(pr.discountType=='in Amount')
+    pr.DiscountedPrice= pr.Price-pr.AdditionalDisAmount;
+    else          
+    pr.DiscountedPrice= (decimal.valueof(pr.Price-(pr.Price * adddis/100)));
+    pr.NetDiscountedPrice= (pr.DiscountedPrice*pr.quantity).setScale(2, RoundingMode.HALF_UP);   
+    pr.DiscountedPrice=Decimal.valueOf(pr.DiscountedPrice).setScale(2, RoundingMode.HALF_UP);  
+    }
+    if(pr.VC!=null) 
+    pr.ContriMargin=(userCountry=='Indonesia' || userCountry=='Vietnam' || userCountry=='Thailand')?pr.NetDiscountedPrice -(pr.vc*pr.quantity):0.0; 
+    If(userCountry=='Indonesia' && pr.ContriMargin!=null)
+    {
+    pr.Rebate=(pr.DiscountedPrice*pr.YearlyRBT).setScale(2, RoundingMode.HALF_UP);
+    //pr.freightcost=(pr.freightfactor*pr.Price).setScale(2, RoundingMode.HALF_UP);
+    
+    //pr.ContriMargin=(pr.ContriMargin-((pr.Rebate+pr.freightcost)*pr.quantity)).setScale(2, RoundingMode.HALF_UP); 
+    
+    
+    
+    Decimal transportcost=((pr.freightcost+pr.Transfercost)*pr.Wgtfactor)*pr.quantity;
+    pr.ContriMargin=(pr.ContriMargin-(pr.Rebate*pr.quantity)-transportcost).setScale(2, RoundingMode.HALF_UP);
+
+    }            
+    if(pr.ContriMargin!=null)  
+    pr.contriMarginPercent= ((pr.ContriMargin/pr.NetDiscountedPrice)*100).setScale(2,RoundingMode.HALF_UP);
+    if(pr.ContriMargin!=null)  
+    TotalContriMargin=TotalContriMargin+pr.ContriMargin;              
+    TotalDisPrice+= pr.NetDiscountedPrice;
+    TotalNetPrice+= pr.NetPrice; 
+    ProductPrice= (TotalDisPrice+((TotalDisPrice*(QuoteVar.Tax__c!=null?QuoteVar.Tax__c:0.0))/100)).setScale(2, RoundingMode.HALF_UP);
+    TotalContriMarginPercent=((TotalContriMargin/TotalDisPrice)*100).setScale(2,RoundingMode.HALF_UP);
+
+    }
+ 
+    }
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,' The following Error is Occured'+e+ 'in line number Number '+e.getlinenumber()+'. Please Contact Administrator'));
+} 
+}   
+
+/* 
+Function Description
+Name: addSelectedSection
+Parameter: Void
+Return Type:boolean
+Description : method for adding the selected products
+*/
+
+public boolean addSelectedSection{
+
+get
+{
+    if(addedProducts == null)
+        addSelectedSection = false;
+    return addSelectedSection;
+}set;
+}
+
+
+/*
+Class Description
+Name: productWrapper
+Description : wrapper class to hold product for selected products processing and display
+*/
+global class productWrapper implements Comparable{
+public boolean isChecked{get;set;}
+public String selectedUomValue{get;set;}
+public Products__c product{get;set;}
+public decimal quantity{get;set;}
+public double price{get;set;}
+public decimal AdditionalDis{get;set;}
+public string remarks{get;set;}        
+public double DiscountedPrice{get;set;}
+public double NetPrice{get;set;}
+public Decimal NetDiscountedPrice{get;set;}
+public list<selectoption> UOMlist{get;set;} 
+public string selectedUOM{get;set;}
+
+public Decimal YearlyRBT{get;set;}
+public Decimal Invoiceprice{get;set;}
+public Decimal TotalDisount{get;set;}
+public string currencycode{get;set;}
+public string productTypeID{get;set;}
+public Decimal ContriMargin{get;set;}
+Public decimal contriMarginPercent{get;set;}
+public Decimal VC{get;set;}
+public string discountType{get;set;}  
+public Decimal freightfactor{get;set;}
+
+public Double Rebate{get;set;}
+public Double freightcost{set;get;} 
+public Decimal Wgtfactor{set;get;}
+public Decimal Transfercost{get;set;}
+public Decimal confactor{set;get;} 
+public list<selectoption> discountTypeList{get{
+                                               List<SelectOption> options = new List<SelectOption>();
+                                               options.add(new SelectOption('in Percent','%'));
+                                               options.add(new SelectOption('in Amount','$'));
+                                               return options;
+                                             }set;}
+public decimal AdditionalDisAmount{get;set;}
+public string sysitemnumber{get;set;}
+public void productWrapper(){
+                     
+}
+/*
+Function Description
+Name: compareTo
+Parameter: Object
+Return Type: Integer
+Description : override the compareTo function of the Wrapper class.
+created By:Abhishek Mohanty
+*/     
+global Integer compareTo(Object objToCompare) {  
+try{   
+    productWrapper oc=(productWrapper)objToCompare;     
+    if(ctrlUBBP_QuoteCreationController.sortBy == 'product.Name'){      
+if((String)product.Name > (String)oc.product.Name)      
+        {       
+            return (ctrlUBBP_QuoteCreationController.sortAscending  ? 1 : 0);       
+        }       
+        else if((String)product.Name < (String)oc.product.Name)     
+        {       
+             return(ctrlUBBP_QuoteCreationController.sortAscending  ? 0 : 1);       
+        }       
+                
+    }       
+    else if(ctrlUBBP_QuoteCreationController.sortBy == 'Product_ID__c'){        
+    if((String)product.Product_ID__c > (String)oc.product.Product_ID__c)        
+        {       
+            return (ctrlUBBP_QuoteCreationController.sortAscending  ? 1 : 0);       
+        }       
+        else if((String)product.Product_ID__c < (String)oc.product.Product_ID__c)       
+        {       
+             return(ctrlUBBP_QuoteCreationController.sortAscending  ? 0 : 1);       
+        }       
+                
+            
+    }       
+    else if(ctrlUBBP_QuoteCreationController.sortBy == 'ERP_Product_Category_L5_Name__c'){      
+    if((String)product.ERP_Product_Category_L5_Name__c > (String)oc.product.ERP_Product_Category_L5_Name__c)        
+        {       
+            return (ctrlUBBP_QuoteCreationController.sortAscending  ? 1 : 0);       
+        }       
+        else if((String)product.ERP_Product_Category_L5_Name__c < (String)oc.product.ERP_Product_Category_L5_Name__c)       
+        {       
+             return(ctrlUBBP_QuoteCreationController.sortAscending  ? 0 : 1);       
+        }       
+                
+            
+    }       
+    else if(ctrlUBBP_QuoteCreationController.sortBy == 'Product_Category__c'){      
+    if((String)product.Product_Category__c> (String)oc.product.Product_Category__c)     
+        {       
+            return (ctrlUBBP_QuoteCreationController.sortAscending  ? 1 : 0);       
+        }       
+        else if((String)product.Product_Category__c< (String)oc.product.Product_Category__c)        
+        {       
+             return(ctrlUBBP_QuoteCreationController.sortAscending  ? 0 : 1);       
+        }       
+                
+            
+    }       
+    else if(ctrlUBBP_QuoteCreationController.sortBy == 'selectedUOM'){      
+    if((String) SelectedUOM> (String)oc.selectedUOM)        
+        {       
+            
+            return (ctrlUBBP_QuoteCreationController.sortAscending  ? 1 : 0);       
+        }       
+        else if((String) SelectedUOM< (String)oc.selectedUOM)       
+        {       
+                    
+             return(ctrlUBBP_QuoteCreationController.sortAscending  ? 0 : 1);       
+        }       
+                
+            
+    }       
+    else if(ctrlUBBP_QuoteCreationController.sortBy == 'Price'){        
+            
+         
+         
+         
+    if((double)price > (double)oc.price)        
+        {       
+               
+            return (ctrlUBBP_QuoteCreationController.sortAscending  ? 1 : 0);       
+        }       
+        else if((double)price < (double)oc.price)       
+        {       
+             
+                    
+             return(ctrlUBBP_QuoteCreationController.sortAscending  ? 0 : 1);       
+        }       
+                
+            
+    }       
+else if(ctrlUBBP_QuoteCreationController.sortBy == 'Quantity'){     
+    if((Decimal)quantity > (Decimal)oc.quantity)        
+        {       
+            return (ctrlUBBP_QuoteCreationController.sortAscending  ? 1 : 0);       
+        }       
+        else if((Decimal)quantity< (Decimal)oc.quantity)        
+        {       
+             return(ctrlUBBP_QuoteCreationController.sortAscending  ? 0 : 1);       
+        }       
+                
+            
+    }                 
+            
+    else if(ctrlUBBP_QuoteCreationController.sortBy == 'DiscountedPrice'){      
+    if((double)DiscountedPrice> (double)oc.DiscountedPrice)     
+        {       
+            
+            return (ctrlUBBP_QuoteCreationController.sortAscending  ? 1 : 0);       
+        }       
+        else if((double)DiscountedPrice< (double)oc.DiscountedPrice)        
+        {       
+                    
+             return(ctrlUBBP_QuoteCreationController.sortAscending  ? 0 : 1);       
+        }       
+                
+            
+    }       
+    else if(ctrlUBBP_QuoteCreationController.sortBy == 'NetDiscountedPrice'){       
+    if((decimal)NetDiscountedPrice> (decimal)oc.NetDiscountedPrice)     
+        {       
+            
+            return (ctrlUBBP_QuoteCreationController.sortAscending  ? 1 : 0);       
+        }       
+        else if((decimal)NetDiscountedPrice< (decimal)oc.NetDiscountedPrice)        
+        {       
+                    
+             return(ctrlUBBP_QuoteCreationController.sortAscending  ? 0 : 1);       
+        }       
+                
+            
+    }       
+    else if(ctrlUBBP_QuoteCreationController.sortBy == 'TotalDisount'){     
+    if((decimal)TotalDisount> (decimal)oc.TotalDisount)     
+        {       
+            
+            return (ctrlUBBP_QuoteCreationController.sortAscending  ? 1 : 0);       
+        }       
+        else if((decimal)TotalDisount< (decimal)oc.TotalDisount)        
+        {       
+                    
+             return(ctrlUBBP_QuoteCreationController.sortAscending  ? 0 : 1);       
+        }       
+                
+            
+    }       
+    else if(ctrlUBBP_QuoteCreationController.sortBy == 'InvoicePrice'){     
+    if((decimal)InvoicePrice> (decimal)oc.InvoicePrice)     
+        {       
+            
+            return (ctrlUBBP_QuoteCreationController.sortAscending  ? 1 : 0);       
+        }       
+        else if((decimal)InvoicePrice< (decimal)oc.InvoicePrice)        
+        {       
+                    
+             return(ctrlUBBP_QuoteCreationController.sortAscending  ? 0 : 1);       
+        }       
+                
+            
+    }       
+    return 0;       
+    }
+
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+return null; }   
+
+}}
+
+/*
+Function Description
+Name: Go
+Parameter: Void
+Return Type: void
+Description :  methods from Page to get all products data
+*/
+public void Go()  {
+x = num ;
+}
+
+/*
+Function Description
+Name: getPageNumber
+Parameter: None
+Return Type: Integer
+Description :  to get page Number 
+*/
+public Integer getPageNumber() {
+try{
+if(offsetsize==100) x = offsetsize/LimitSize ;
+else x = offsetsize/LimitSize +1 ;
+return x;
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+return null; }       
+
+}
+
+/*
+Function Description
+Name: getAllProducts
+Parameter: None
+Return Type: void
+Description :  to get All the Products
+*/
+public void getAllProducts(){
+try{
+search();
+}
+ catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+
+}
+
+/*
+Function Description
+Name: addSelected
+Parameter: None
+Return Type: pageReference 
+Description :  method to add a selected products to the list for further processing
+*/
+public void addSelected() {
+try{
+integer i=0;
+set<string>errorIDs=new set<string>();
+for(productWrapper pro:products){
+if(pro.quantity!=0)
+i++;
+}
+
+if(i==0){ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.FATAL,label.AUS_ProductListingController_Selection));
+validFlag=true;}
+
+for(productWrapper pr:products)
+{
+if((pr.Quantity<0 || pr.Quantity>10000000)){
+   ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.Fatal,label.Quote_QuantityError));
+   validFlag=true;
+    }
+else if(pr.quantity!=0){
+    
+    string key=pr.product.Product_Unique_Id__c;
+    if(prodMap.size()>0?(prodMap.containskey(key)):false){
+     ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.FATAL,label.AUS_ProductListingController_SameProduct));}
+    else{
+     productWrapper pw = new productWrapper();
+     pw.product= pr.product;                     
+     pw.quantity=pr.quantity;  
+     pw.currencycode= pr.currencycode;                       
+     pw.AdditionalDis=0.0;
+     pw.AdditionalDisAmount=0.0;
+     
+     if(usercountry=='Philippines' || usercountry=='Vietnam')
+     pw.discountType='in Amount';
+     else
+     pw.discountType='in Percent'; 
+     pw.price=Decimal.valueOf(pr.price).setscale(2); 
+     pw.vc=(pr.vc); 
+     pw.UOMlist= new list<selectOption>();
+     if(pr.UOMList.size()>0){
+         pw.selectedUOM=pr.selectedUOM;
+         pw.selectedUomValue=pr.selectedUOM.split('--;--')[0];  
+         pw.UOMlist=pr.UOMList; 
+         system.debug('print prodweight key'+pw.product.Product_Unique_Id__c+'-'+pw.selectedUOM.split('--;--')[0]);
+     if(prodweight.containskey(pw.product.Product_Unique_Id__c+'-'+pw.selectedUOM.split('--;--')[0]))
+     pw.Wgtfactor=prodweight.get(pw.product.Product_Unique_Id__c+'-'+pw.selectedUOM.split('--;--')[0]);
+     else
+     pw.Wgtfactor=0.0;
+     if(pw.product.Product_Category__c=='Plasterboard' && UserCountry=='Vietnam' && (opp.RecordType.name =='Project Sales Data Source' || opp.RecordType.name =='Project Sales Manual'))
+     {
+     if(!UomconversionMap.containskey(pw.product.Product_Unique_Id__c))
+     errorIDs.add(pw.product.Product_ID__c);
+    else{  
+List<Uom_Conversion__c>uomlist=UomconversionMap.get(pw.product.Product_Unique_Id__c);
+flag =false;
+for(Uom_Conversion__c um:uomlist)
+{
+if(um.Sales_Uom__c==pw.selectedUOM.split('--;--')[0]) 
+{
+flag =true;
+pw.confactor=um.Conversion_Factor__c;
+break;
+}}
+if(!flag)
+errorIDs.add(pw.product.Product_ID__c);
+         else
+            {
+             calculatecorpqty();
+                 If(opp.PB_Balance_SQM__c>=PBqty+(pw.confactor*pw.quantity)){
+                 addedProducts.add(pw);                
+                 prodMap.put((key), 1);                    
+                 pr.quantity=0;
+                 validFlag=false;
+                 }
+                 else
+                 {
+                  corpqtyflag=false;
+                  ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.Error,label.Quote_created_quantity3));
+                  }    
+ 
+         }}}     
+      else{ addedProducts.add(pw);                    
+     prodMap.put((key), 1);                    
+     pr.quantity=0;
+     validFlag=false;
+     }
+     }  
+ }
+ 
+ 
+}
+}
+
+
+
+
+if(errorIDs.size()>0)
+{
+string str='';
+for(string s:errorIDs){
+            str+=s+' ,';
+   }
+string tempmsg=label.Quote_created_quantity+'  '+str+'  '+label.Quote_created_quantity2;
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.Error,tempmsg));
+}
+
+}
+catch(exception e){
+
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,' The following Error is Occured'+e+ 'in line number Number '+e.getlinenumber()+'. Please Contact Administrator'));
+
+}
+if(addedProducts.size()>0)
+addSelectedSection = true;
+}
+/*
+Function Description
+Name: saveSelected
+Parameter: None
+Return Type: pageReference 
+Description :  method to filter the required records
+*/
+public pageReference searchClick(){
+try{
+Flag=False;
+return search();
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+return null; }  
+
+}
+
+/*
+Function Description
+Name: saveSelected
+Parameter: None
+Return Type: pageReference 
+Description :  method to filter the required records
+*/
+public pageReference search()   { 
+try{
+ 
+if(flag==false) OffsetSize=0;
+
+products= new list<productWrapper>();
+map<string,set<String>> tempprodUOM= new map<string,set<String>>(); 
+List<Products__c> prods= new List<Products__c>();
+String whereCond='';       
+set<string> prodIds= new set<string>();
+String Querytemp1='select product__c,Product__r.name from Price_Product_List__c where Price_List__c='+'\''+QuoteVar.Price_List__c+'\''+' and Product__r.Active_Flag__c=True';
+if(prodTypeName!=null && prodTypeName!='')
+    whereCond+='  AND product__r.ERP_Product_Category_L5_Name__c like \'%' + String.escapeSingleQuotes(prodTypeName) + '%\'';
+if(prodGrpName!=null && prodGrpName!='' && prodGrpName!='--None--')
+    whereCond+=' AND product__r.Product_Category__c like \'%'+ String.escapeSingleQuotes(prodGrpName) + '%\'';
+if(prodId!=null && prodId!='')
+   whereCond+=' AND product__r.Product_ID__c like \'%'  + String.escapeSingleQuotes(prodId) + '%\'';
+   if(prodName!=null && prodname!='')
+   whereCond+=' AND product__r.name like \'%'  + String.escapeSingleQuotes(prodname) + '%\'';
+  
+// if(Usercountry=='Indonesia')
+// whereCond=whereCond+' AND start_date__c<=:'+QuoteVar.Validity_Date__c+' AND End_Date__c>=:'+QuoteVar.Validity_Date__c;
+
+if(whereCond.length()>0){Querytemp1=(Querytemp1+whereCond);}
+
+Querytemp1+='  group by product__c ,product__r.name';
+
+system.debug('Querytemp1'+Querytemp1);
+totalRecs =database.query(Querytemp1).size();
+
+if(totalRecs >= 1000){
+  
+   ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,label.AUS_ProdListController_ExcessRec.replace('<Total_Record>',string.valueof(totalRecs))));
+   totalRecs = 1000;
+}
+
+Querytemp1+=' ORDER BY product__r.name ASC NULLS LAST LIMIT '+LimitSize +' OFFSET '+OffsetSize;
+
+for (AggregateResult ar : database.query(Querytemp1))  
+    prodIds.add(string.valueof(ar.get('product__c')));
+    
+
+
+String query = 'Select Name,List_Price__c,Product_Unique_Id__c,Product_Category__c,Product_Category_Name__c,ERP_Product_Category_L1_Name__c,Product_Id__c,product_Category_ID__c,ERP_Product_Category_L1_ID__c,ERP_Product_Category_L5_ID__c,ERP_Product_Category_L5_Name__c from Products__c '+ ' WHERE country__c='+'\''+UserCountry+'\''+'and id in :prodIds'+' and Active_Flag__c=TRUE '+'ORDER BY Name ASC NULLS LAST';
+ 
+try{ 
+    prods=database.query(query);
+    getSelectedProdUOM(prodIds,tempprodUOM);
+    
+    for(Products__c pr: prods ){  
+    productWrapper pw= new productWrapper();
+    pw.product=pr;
+    pw.Quantity=0;
+    pw.price=0;
+    pw.UOMlist= new list<selectOption>();
+    if(tempprodUOM.size()>0){ 
+       if(tempprodUOM.containskey(pw.product.id))
+       for(string s:tempprodUOM.get(pw.product.id)){
+           pw.price=decimal.valueof(s.split('--;--')[1]);
+           pw.Vc=decimal.valueof(s.split('--;--')[2]);
+           if(userCountry=='Philippines'){          
+            pw.price= (pw.price+((pw.price*(QuoteVar.Tax__c!=null?QuoteVar.Tax__c:0.0))/100)).setScale(2, RoundingMode.HALF_UP);
+           }
+           
+            pw.selectedUOM=s;
+            pw.selectedUomValue=s.split('--;--')[0];
+            pw.UOMlist.add(new selectoption(s,pw.selectedUomValue));
+        
+       }
+       }
+    
+    products.add(pw);
+    if(products.size()>=999)
+    break;
+}   
+ }
+ catch(Exception e){
+    
+    ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,label.AUS_ProductListingController_NoResult));
+ }
+
+        
+
+prods.clear();
+tempprodUOM.clear();
+prodIds.clear();
+
+if(products.size()>0)   showsearch=true;
+else  showSearch=false;
+
+ 
+return  null;
+
+} catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+return null; }     
+}
+
+/* 
+Function Description
+Name: getSelectedProductUOM
+Parameter: Void
+Return Type: void
+Description : method for fetching the unit of measurement of a selected products
+*/
+public void getSelectedProdUOM(set<string> prods ,map<string,set<String>>prodUOM){
+try{
+List<Price_Product_List__c>ppllist=new  List<Price_Product_List__c>();
+if(Usercountry=='Indonesia')
+ppllist=[select id ,VC__c,CurrencyIsoCode,UoM__c,List_price__c,product__c,Price_List__r.name from Price_Product_List__c where product__c in:prods and Price_List__c=:QuoteVar.Price_List__c and start_date__c<=:QuoteVar.Validity_Date__c and End_Date__c>=:QuoteVar.Validity_Date__c ];
+else
+ppllist=[select id ,VC__c,CurrencyIsoCode,UoM__c,List_price__c,product__c,Price_List__r.name from Price_Product_List__c where product__c in:prods and Price_List__c=:QuoteVar.Price_List__c ];
+for(Price_Product_List__c p: ppllist){
+        pricelistName=p.Price_List__r.name;
+   set<string>temp= new Set<string>();
+      if(prodUOM.containskey(p.product__c)){
+        temp.addall(prodUOM.get(p.product__c));
+        temp.add(p.UoM__c+'--;--'+string.valueOf(p.List_price__c)+'--;--'+string.valueof(p.VC__c!=null?p.vc__c:0.0));
+        prodUOM.put(p.product__c,temp); 
+    }
+    else{
+        
+        if(string.isnotblank(p.UoM__c)){
+        temp.add(p.UoM__c+'--;--'+string.valueOf(p.List_price__c)+'--;--'+string.valueof(p.VC__c!=null?p.vc__c:0.0));
+        prodUOM.put(p.product__c,temp); }
+    }
+}
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+
+} 
+
+/*
+Function Description
+Name: goBack
+Parameter: None
+Return Type: pageReference 
+Description :  to navigate back to opportunity page
+*/
+public PageReference goBack() {
+try{
+    String hostUrl=System.URL.getSalesforceBaseUrl().toExternalForm();
+    PageReference returnPage;
+    returnPage = new PageReference(hostUrl+'/'+opportunityId );
+     if(apexpages.currentpage().getparameters().get('mode')!=null)
+       {
+        string quoteid= Apexpages.currentPage().getparameters().get('id');
+        
+        if(apexpages.currentpage().getparameters().get('mode')=='clone' || apexpages.currentpage().getparameters().get('mode')=='clonetodiff'){
+            
+            returnPage = new PageReference('/'+quoteid );
+          }  
+        }
+        
+        return returnpage;}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+return null; }  
+}
+ /*
+Function Description
+Name: validation
+Parameter: None
+Return Type: void
+Description :  to validation method on the class.
+*/
+public boolean validation( string checkdata){
+try{
+boolean error=true;
+if(checkdata=='Price List Null'){
+   if(string.isblank(Quotevar.Price_List__c)){
+       ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.FATAL,label.Quote_PriceListError));
+       error=false;
+   }
+}
+if(checkdata=='Parent Quote Null'){
+   if(string.isblank(Quotevar.Parent_Quote__c) && Quotevar.Quote_Type__c=='Extension' ){
+       ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.FATAL,label.Quote_Parent_Quote_Error));
+       error=false;
+   }
+}
+
+if(checkdata=='Terms of Payment'){
+  if(string.isblank(Quotevar.terms_of_payment__c)){
+      
+       ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.FATAL,label.Quote_TermsOfPayment));
+       error=false;
+   }
+   else if(Quotevar.terms_of_payment__c=='---None---'){
+      
+       ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.FATAL,label.Quote_TermsOfPayment));
+       error=false;
+   }
+  
+}  
+
+if(checkdata=='Validity Date'){
+   if(string.isblank(string.valueof(Quotevar.validity_date__c)) && Opp.physical_Country__c!='Korea'){
+       ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.FATAL,label.Quote_ValidityDate2));
+       error=false;
+   }
+}   
+return error;
+
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+return null; }        
+
+}
+
+/*
+Function Description
+Name: removeSelected
+Parameter: None
+Return Type: void
+Description :  remove selected items from the list.
+*/
+public void removeSelected(){
+try{
+    List<productWrapper> cw=addedProducts;
+    for(Integer j=cw.size()-1;j>=0;j--){
+        if(cw.get(j).isChecked == true)  {
+            prodMap.remove((cw[j].product.Product_Unique_Id__c));
+            cw.remove(j);
+            }
+    }
+    if(cw.size()==0)
+    {addSelectedSection=false;}
+    }
+    catch(exception e){
+
+}
+}
+
+/*
+Function Description
+Name: First
+Parameter: None
+Return Type: PageReference 
+Description :  to move to the first page of records.
+*/
+public PageReference First(){
+try{
+OffsetSize = 0;
+search();
+} catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}  return null;
+
+}
+
+/*
+Function Description
+Name: Previous
+Parameter: None
+Return Type: PageReference 
+Description :  to move to the Previous page of record.
+*/
+public PageReference previous(){
+try{
+OffsetSize = OffsetSize - LimitSize;
+flag=true;
+search();
+
+} catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+return null;
+}
+
+/*
+Function Description
+Name: Next
+Parameter: None
+Return Type: PageReference 
+Description :  to move to the Next page .
+*/
+public PageReference next(){
+try{
+noGate=howMnyChecked(products);
+OffsetSize = OffsetSize + LimitSize;
+flag=true;
+search();
+
+
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+return null;
+}
+
+/*
+Function Description
+Name: getTotalRecs
+Parameter: None
+Return Type: Integer 
+Description :  to fetch total number of records .
+*/
+public Integer getTotalRecs() {
+try{
+return totalRecs;
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+return null; }   }
+
+/*
+Function Description
+Name: Last
+Parameter: None
+Return Type: PageReference 
+Description :  to move to the last page of records .
+*/
+public PageReference Last(){
+try{
+integer pagenum=0;
+if (math.mod(totalRecs, limitSize) > 0){ pagenum=totalRecs/limitSize; }
+else{ pagenum=(totalRecs/limitSize)-1 ; }
+
+OffsetSize = (pagenum*limitSize);
+
+if(totalRecs ==1000) OffsetSize = 990;
+search();
+flag=true;
+
+
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+return null;
+}
+/*
+Function Description
+Name: getPrev
+Parameter: None
+Return Type: boolean 
+Description :  checks wheather page is first page or not .
+*/
+public boolean getprev(){
+try{
+  if(OffsetSize == 0)
+  return true;
+  else
+  return false;
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+return null;
+}   
+}
+/*
+Function Description
+Name: getnxt
+Parameter: None
+Return Type: boolean 
+Description :  checks wheather page is last page or not .
+*/
+public boolean getnxt(){
+try{   
+  if((OffsetSize + LimitSize) > totalRecs)
+  return true;
+  else
+  return false;
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+return null;
+}   
+
+
+}
+/*
+Function Description
+Name: getSelectedCount
+Parameter: None
+Return Type: Integer 
+Description :  counts the number of selected records .
+*/
+public Integer getSelectedCount(){
+try{
+    return this.prodtID.size();
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+return null;
+}   
+}
+/*
+Function Description
+Name: getTotalPages
+Parameter: None
+Return Type: Integer 
+Description : used to count the number of pages .
+*/
+public Integer getTotalPages() {
+try{
+if (math.mod(totalRecs, limitSize) > 0) return totalRecs/limitSize + 1;
+else return (totalRecs/limitSize);
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+return null;
+}   
+}
+/*
+Function Description
+Name: saveQuote
+Parameter: None
+Return Type: PageReference 
+Description : Save final quote details.
+*/
+
+Public PageReference saveQuote() {  
+
+try{ 
+
+if( string.isnotblank(accountid1) ){   
+    Quotevar.End_Customer_Related_Account1__c=accountid1;           
+     if((string.isnotblank(contactid1) && contactid1!='---None---')&& conmap.size()>0 ) {      
+      if(conMap.containskey(contactid1))      
+          Quotevar.End_Customer_Related_Contact1__c = contactid1;       
+            
+               }        
+        else{       
+         Quotevar.End_Customer_Related_Contact1__c=null;        
+                
+        }       
+}       
+if(radiovalue=='endcustomer')  {
+    quotevar.End_Customer__c=true;     
+    quotevar.Buying_Account__c=false;       
+}       
+if(radiovalue=='Buyingaccount'){
+    quotevar.Buying_Account__c=true;       
+    quotevar.End_Customer__c=false;     
+}       
+if(myacc!=null){        
+ Quotevar.Physical_Street__c= myacc.shippingstreet;         
+ Quotevar.Physical_City__c= myacc.shippingcity;         
+ Quotevar.Physical_State__c= myacc.shippingstate;           
+ Quotevar.Physical_Country__c= myacc.shippingcountry;       
+        
+ if(myacc.shippingpostalcode!=null){        
+ Quotevar.Physical_Zip_Postal_Code__c= String.ValueOf(myacc.shippingpostalcode);           
+        
+ }
+}        
+quotevar.Preferred_Physical_Address__c='';      
+if(Quotevar.Physical_Street__c!=null)      
+{quotevar.Preferred_Physical_Address__c=Quotevar.Physical_Street__c;       
+    
+}       
+if( Quotevar.Physical_City__c!=null)        
+{quotevar.Preferred_Physical_Address__c=quotevar.Preferred_Physical_Address__c+' '+Quotevar.Physical_City__c;       
+    
+}       
+    
+if( Quotevar.Physical_State__c!=null)      
+{quotevar.Preferred_Physical_Address__c=quotevar.Preferred_Physical_Address__c+' '+ Quotevar.Physical_State__c;     
+    
+}       
+if( Quotevar.Physical_Country__c!=null)        
+{quotevar.Preferred_Physical_Address__c=quotevar.Preferred_Physical_Address__c+' '+ Quotevar.Physical_Country__c;       
+    
+}       
+
+if(myacc!=null){      
+Quotevar.Billing_Street__c= myacc.billingstreet;           
+Quotevar.Billing_City__c= myacc.billingcity;           
+Quotevar.Billing_State__c= myacc.billingstate;         
+Quotevar.Billing_Country__c= myacc.billingcountry;         
+    
+if(myacc.billingpostalcode!=null){     
+Quotevar.Billing_Zip_Postal_Code__c= string.ValueOf(myacc.billingpostalcode);  }   }      
+    
+quotevar.Preferred_Billing_Address__c='';      
+if(Quotevar.Billing_Street__c!=null)       
+{quotevar.Preferred_Billing_Address__c=Quotevar.Billing_Street__c;     
+    
+}       
+if( Quotevar.Billing_City__c!=null)         
+{quotevar.Preferred_Billing_Address__c=quotevar.Preferred_Billing_Address__c+' '+Quotevar.Billing_City__c;      
+    
+}       
+    
+if( Quotevar.Billing_State__c!=null)       
+{quotevar.Preferred_Billing_Address__c=quotevar.Preferred_Billing_Address__c+' '+ Quotevar.Billing_State__c;        
+    
+}       
+if( Quotevar.Billing_Country__c!=null)         
+{quotevar.Preferred_Billing_Address__c=quotevar.Preferred_Billing_Address__c+' '+ Quotevar.Billing_Country__c;      
+    
+}       
+    
+if(opp!=null){       
+Quotevar.Project_Street__c= opp.Physical_Street__c;
+if(usercountry!='Indonesia'){        
+Quotevar.Project_City__c= opp.Physical_Suburb_City__c;         
+Quotevar.Project_State__c= oppstate;  }     
+Quotevar.Project_Country__c= oppcountry;       
+    
+if(opp.Physical_Zip_Postal_Code__c!=null){         
+Quotevar.Physical_Zip_Postal_Code__c=string.ValueOf(opp.Physical_Zip_Postal_Code__c); }}       
+    
+quotevar.Preferred_Project_Address__c='';        
+if(Quotevar.Project_Street__c!=null)       
+{quotevar.Preferred_Project_Address__c=Quotevar.Project_Street__c;     
+    
+}       
+if( Quotevar.Project_City__c!=null)         
+{quotevar.Preferred_Project_Address__c=quotevar.Preferred_Project_Address__c+' '+Quotevar.Project_City__c;      
+    
+}       
+    
+if( Quotevar.Project_State__c!=null)       
+{quotevar.Preferred_Project_Address__c=quotevar.Preferred_Project_Address__c+' '+ Quotevar.Project_State__c;        
+    
+}       
+if( Quotevar.Project_Country__c!=null)         
+{quotevar.Preferred_Project_Address__c=quotevar.Preferred_Project_Address__c+' '+ Quotevar.Project_Country__c;      
+    
+}       
+//SN20160224
+boolean flag=true;
+
+if(Quotevar.Quotation_In_charge__c==null && userCountry=='Singapore'){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.Fatal,'Please select Quotation In Charge'));
+flag=false;
+}
+
+
+if(Quotevar.Preferred_Project_Name__c==null){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.Fatal,label.Quote_PreferredDetails));
+flag=false;
+}
+if(Quotevar.Preferred_Contact__c==null){ 
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.Fatal,label.Quote_PreferredDetails1));
+flag=false;
+}  
+if(Quotevar.Preferred_Account__c==null){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.Fatal,label.Quote_PreferredDetails2));
+flag=false;
+}
+if(!(validation('Price List Null') )){
+flag=false;
+}
+if(!(validation('Parent Quote Null') )){
+flag=false;
+}
+
+
+if(!validation('Terms of Payment')){
+flag=false;
+}
+if(!validation('Validity Date')){
+
+flag=false;
+}
+
+if(quotevar.Validity_Date__c<=quotevar.Issued_Date__c){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.Fatal,label.Quote_ValidityDate1));
+flag=false;
+}
+if(validDays!=null && Opp.physical_Country__c!='Korea'){
+  if(quotevar.Validity_Date__c>=Date.today()+validDays){
+       string tempMsg=Label.Quote_ValidityDate3+'  '+String.valueOf(ValidDays)+' '+Label.Quote_Validity_date4;
+       ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR,tempMsg));
+       
+       flag=false;
+   } }
+   
+validatecorpuom();
+calculatecorpqty();
+Opportunity Opp2=[select PB_Total_Quoted_SQM__c from Opportunity where id=:Opportunityid];
+If(userCountry=='Vietnam'&& (opp.RecordType.name =='Project Sales Data Source' || opp.RecordType.name =='Project Sales Manual'))
+{ 
+if(corpflag && corpqtyflag )
+Opp2.PB_Total_Quoted_SQM__c=(opp2.PB_Total_Quoted_SQM__c!=NULL?opp2.PB_Total_Quoted_SQM__c:0.0)+PBqty; // queryed Opportunity again as OPP is refernced for address fields
+else
+flag=false;
+}
+
+Integer i=0;
+for(productWrapper pw :addedProducts)
+{
+if(pw.product.ERP_Product_Category_L5_ID__c!=NULL?pw.product.ERP_Product_Category_L5_ID__c.contains('SPA'):False)
+     i++;
+   pw.AdditionalDis=pw.AdditionalDis!=NULL?pw.AdditionalDis:0.0; 
+if(pw.AdditionalDis!=NULL && quotevar.Dealer_Margin__c!=null && pw.discountType=='in Percent'){
+    if(((pw.AdditionalDis)<quotevar.Dealer_Margin__c && usercountry.equalsIgnoreCase('Indonesia'))){
+       quotevar.Dealer_Margin__c=0.0;
+       netPriceAfterError();
+       ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.Warning,label.Quote_DealerMargin3));
+       Flag=false;
+    }
+}
+if(pw.selectedUOM.split('--;--')[0]=='' || pw.Price==0.0)
+{
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR,label.Quote_Uom));
+Flag=false;
+}
+
+if(Opp.physical_Country__c=='Vietnam' && pw.YearlyRBT!=NULL && pw.AdditionalDis!=NULL)
+{
+Decimal dis=pw.AdditionalDis+pw.YearlyRBT;
+if(dis>100)
+{
+if(pw.AdditionalDis>100)
+{
+pw.AdditionalDis=0.0;
+}
+else if(pw.YearlyRBT>100)
+{
+pw.YearlyRBT=0.0;
+}
+else
+{
+pw.AdditionalDis=0.0;
+pw.YearlyRBT=0.0;
+}
+netPriceAfterError();
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR,label.Quote_total_discount));
+Flag=false;
+}
+}
+else
+{
+if(pw.AdditionalDis>100 && pw.AdditionalDis!=NULL)
+{
+pw.AdditionalDis=0.0;
+netPriceAfterError();
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR,label.Quote_total_discount));
+Flag=false;
+
+}
+}
+}
+
+
+
+if(flag){   
+if(i>0 && opp.physical_country__c.equalsIgnoreCase('Korea'))
+quoteVar.Approval_type__c='KR-SPA';
+quoteVar.Account_Name__c=accountid;
+if(contactID!=null &&  contactID!='---None---') quoteVar.Contact_Person__c=contactId;
+quoteVar.Opportunity_Name__c=opportunityId;
+quoteVar.status__c='Draft';  
+QuoteVar.Total_Contribution_Margin__c=TotalContriMargin;
+QuoteVar.Total_Contribution_Margin_Percent__c=TotalContriMarginPercent;
+if(string.isnotblank(terms_Cond)) quoteVar.Terms_and_Conditions__c=terms_Cond; 
+
+insert quotevar;
+List<Quote_Item__c> quoteitem=new List<Quote_Item__c>();
+
+
+for(productWrapper pr :addedProducts){
+    Quote_Item__c items= new Quote_Item__c();
+    items.Quote__c=quotevar.id;
+    items.Additional_Discount__c=pr.AdditionalDis;
+    items.List_Price__c=Decimal.valueOf(pr.Price).setscale(2);
+    items.Product_Category__c=pr.product.Product_Category__c;
+    items.Product_Name__c=pr.product.Name;
+    items.Product_ID__c=pr.product.Product_ID__c;
+    items.UoM__c=pr.selectedUOM.split('--;--')[0];  
+    items.Product_Unique_Id__c=pr.product.Product_Unique_Id__c;
+    items.Quantity__c=pr.quantity;
+    items.product__c=pr.product.id;
+    items.ERP_Product_Category_L5_Name__c=pr.product.ERP_Product_Category_L5_Name__c;
+    items.ERP_Product_Category_L5_ID__c=pr.product.ERP_Product_Category_L5_ID__c;
+    items.ERP_Product_Category_L1_ID__c=pr.product.ERP_Product_Category_L1_ID__c;
+    items.ERP_Product_Category_L1_Name__c=pr.product.ERP_Product_Category_L1_Name__c;
+    items.Remarks__c=pr.remarks;
+    items.CurrencyIsoCode=pr.currencycode;
+    items.variable_Cost__c=pr.vc;
+    items.Contribution_Margin__c=pr.contriMargin;
+    items.Contribution_Margin_Percent__c=pr.contriMarginPercent;
+    items.Add_Disc_amount__c=pr.AdditionalDisamount;
+    items.Discount_Type__c=pr.discountType;  
+    if(String.isNotBlank(pr.sysitemnumber)) items.System_List_item__c=pr.sysitemnumber;                      
+    if(userCountry=='Indonesia')
+    {
+    items.Yearly_Quarterly_Rebate__c=pr.YearlyRBT;
+    items.Rebate__c=pr.Rebate;       
+    // items.Freight_Factor__c=pr.freightfactor;
+    items.Freight_Charge__c=pr.freightcost*pr.Wgtfactor;
+    items.Stock_Transfer_cost__c=pr.Transfercost*pr.Wgtfactor;
+    items.Weight_Factor__c=pr.Wgtfactor;
+
+    }
+   else if(opp.physical_Country__c=='Vietnam')
+        {
+    items.Yearly_Quarterly_Rebate__c=pr.YearlyRBT;
+    items.Rebate__c=pr.Rebate;
+       }
+    
+    quoteitem.add(items);
+}
+
+if (quoteitem.size()>0) 
+//insert quoteitem;
+
+Database.SaveResult[] srList = Database.insert(quoteitem, false);
+update Opp2; // to update PB Total SQM field value
+PageReference page;
+page= new PageReference('/' +Quotevar.ID );
+page.setRedirect(true);
+
+return page;
+}
+return null;
+} Catch(system.DmlException e){
+
+   Flag=false;
+   return null;}
+catch(system.Exception e){
+  if(!(string.valueof(e).contains('Quotation In charge') ))
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR,'The exception is '+e.getmessage()+ 'in the line number'+e.getLineNumber()+'. Please contact administrator') );
+       Flag=false;
+   return null;}
+
+}
+
+/*
+Function Description
+Name: howMnyChecked
+Parameter: None
+Return Type: boolean 
+Description : used to count the number of records which are checked.
+*/
+
+private boolean howMnyChecked(list<productWrapper> products){
+     for(productWrapper pc:products){
+         if(pc.isChecked==true){
+         noGate=true;
+         return noGate;
+         break;
+         }
+     }
+     return noGate;
+ }  
+ 
+ /*
+Function Description
+Name: switch
+Parameter: None
+Return Type: void
+Description : used to switch between tabs.
+*/
+public void switch(){  
+try{                       
+tabOpt = 'one';     
+hideTab=false;      
+}
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+}
+
+/*
+Function Description
+Name: switch2
+Parameter: None
+Return Type: void
+Description : used to switch between tabs.
+*/       
+public void switch2() { 
+try{          
+tabOpt = 'Two';     
+hideTab=true;       
+} catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+}  
+
+
+/*
+Function Description
+Name: CancelTerms
+Parameter: None
+Return Type: void
+Description :used to cancel terms
+*/      
+public void CancelTerms(){ 
+try{          
+tabOpt = 'One';     
+hideTab=false;      
+QuoteVar.Custom_Terms__c=false;     
+QuoteVar.Terms_and_Conditions__c='';        
+}   catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+}    
+
+// Added for estimate code -SN21061021
+
+/*
+Function Description
+Name: intialParser
+Parameter: None
+Return Type: void
+Description :to parse data
+*/ 
+public void intialParser(){
+try{
+if(Productadded==false){
+urldata=apexpages.currentpage().getparameters().get('EstDetails');
+
+string sysId= Apexpages.currentPage().getparameters().get('Estid');
+if(string.isnotblank(sysId)){
+system_estimate__c sysest=[select id ,product_ids__c from System_Estimate__c where id =:sysID limit 1];
+UrlData=sysest.product_ids__c;
+QuoteVar.System_Estimate__c=sysest.id;
+}
+ string mode= Apexpages.currentPage().getparameters().get('mode');
+if(string.isnotblank(mode)){
+    for(Quote_Item__c i: clonedQuote.Quote_Items__R){
+         double d;
+        if(i.Discount_Type__c=='in Percent')
+        d=i.Additional_discount__c!=null?double.valueof(i.Additional_discount__c):0.0;
+        else if(i.Discount_Type__c=='in Amount')
+        d=i.Add_Disc_amount__c!=null?double.valueof(i.Add_Disc_amount__c):0.0;
+        String s='-param1-'+string.valueof(i.product__c).substring(0,15)+'-param2-'+i.UoM__c+'-param3-'+d+'-param4-'+i.Quantity__c+'-param5-'+i.Discount_Type__c+'-param6-'+'--END--';
+        urldata=urldata+s;
+    }
+}
+if(string.isnotblank(urldata)){
+    List<string> splitValue=new list<string>();
+    splitValue.addall(urldata.split('--END--'));
+    
+     if(splitValue.size()>0){
+         Map<string,decimal> prodDisMap= new Map<string,decimal>();
+         Map<string,String> ProdUomMap= new Map<string,string>();
+         Map<string,Decimal> ProdQuanMap= new Map<string,Decimal>(); 
+         Map<string,string>prodDisType=new Map<string,string>();                  
+         set<string> tempprodIds= new set<string>();
+         Map<string,products__c> prolist=new Map<string,products__c>();
+         Map<string,string>prodsysitem=new Map<string,string>();
+         for(string s:splitValue){
+             if(s.length()>12){
+                 
+             prodDisMap.put(s.substringbetween('-param1-','-param3-'),decimal.valueof(s.substringbetween('-param3-','-param4-')));
+             ProdUomMap.put(s.substringbetween('-param1-','-param3-'),s.substringbetween('-param2-','-param3-'));
+             ProdQuanMap.put(s.substringbetween('-param1-','-param3-'),decimal.valueof(s.substringbetween('-param4-','-param5-')));                      
+             If(string.isnotblank(mode))
+             prodDisType.put(s.substringbetween('-param1-','-param3-'),(s.substringbetween('-param5-','-param6-')));
+             else
+             prodsysitem.put(s.substringbetween('-param1-','-param3-'),(s.substringbetween('-param5-','-param6-')));                     
+             tempprodIds.add(s.substringbetween('-param1-','-param2-'));    
+             }                   
+         }
+        for(products__c p:[Select id,Name,List_Price__c,Product_Unique_Id__c,Product_Category__c,Product_Category_Name__c,ERP_Product_Category_L1_Name__c,
+        Product_Id__c,ERP_Product_Category_L1_ID__c,product_Category_ID__c,ERP_Product_Category_L5_ID__c,ERP_Product_Category_L5_Name__c from Products__c  
+        WHERE id in :tempprodIds]){
+            prolist.put(string.valueof(p.id).substring(0,15),p);
+            
+        }
+        
+        
+        map<string,set<String>> tempprodUOM= new map<string,set<String>>();
+        getSelectedProdUOM(tempprodIds,tempprodUOM);
+        for(string  prd: ProdUomMap.keyset()){
+            productWrapper pw= new productWrapper();
+            string prodId=prd.substring(0,15);
+            pw.product=prolist.get(prodId);
+            pw.Quantity=ProdQuanMap.containskey(prd)? ProdQuanMap.get(prd):0;
+             If(string.isnotblank(mode))
+            {
+            pw.Discounttype=prodDisType.containskey(prd)?prodDisType.get(prd):'';
+            if(pw.Discounttype=='in Percent')
+            {
+            pw.AdditionalDis=prodDisMap.containskey(prd)? prodDisMap.get(prd):0.0;
+            pw.AdditionalDisAmount=0.0;
+            }
+            else if(pw.Discounttype=='in Amount')
+            {
+            pw.AdditionalDisAmount=prodDisMap.containskey(prd)? prodDisMap.get(prd):0.0;                    
+            pw.AdditionalDis=0.0;
+            }
+            }
+            else
+            {
+            pw.AdditionalDis=prodDisMap.containskey(prd)? prodDisMap.get(prd):0.0;
+            pw.Discounttype='in Percent';
+            pw.AdditionalDisAmount=0.0;
+            if(prodsysitem.containskey(prd)) pw.sysitemnumber=prodsysitem.get(prd);
+            }
+            
+            pw.UOMlist= new list<selectOption>();
+            pw.price=0.0;
+            
+            boolean flag=false; 
+            if(tempprodUOM.size()>0){ 
+               if(tempprodUOM.containskey(pw.product.id))
+               
+               for(string s:tempprodUOM.get(pw.product.id)){
+                  
+                   pw.UOMlist.add(new selectoption(s,s.split('--;--')[0]));
+                   if(s.split('--;--')[0]==ProdUomMap.get(prd)){
+                        pw.selectedUomValue=s.split('--;--')[0];
+                        pw.selectedUOM=s;
+                        pw.price=decimal.valueof(s.split('--;--')[1]);
+                        pw.vc=decimal.valueof(s.split('--;--')[2]);
+                        flag=true;
+                   }
+                   if(userCountry=='Philippines'){          
+                    pw.price= (pw.price+((pw.price*(QuoteVar.Tax__c!=null?QuoteVar.Tax__c:0.0))/100)).setScale(2, RoundingMode.HALF_UP);
+                   }
+               }
+            }
+            if(!flag){
+            pw.UOMlist.add(new selectoption(''+'--;--'+'0.0',''));
+            pw.selectedUomValue='';
+            pw.SelectedUoM=''+'--;--'+'0.0';
+            }
+            string key=pw.product.Product_Unique_Id__c;
+            prodMap.put((key), 1);
+            addedproducts.add(pw);
+        }
+        addSelectedSection=true;
+        prodDisMap.clear();
+        ProdUomMap.clear();
+        tempprodIds.clear();
+        tempprodUOM.clear();
+        prolist.clear();
+        
+     }          
+}
+Productadded=true;  
+}
+}  
+catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+
+}
+
+/*
+Function Description
+Name: toSort
+Parameter: None
+Return Type: void
+Description : used to sort the table.
+created By:Abhishek Mohanty
+*/
+public void SortByName(){ 
+try{      
+if(previousSortBy!=sortBy && previousSortBy!=null )sortAscending=true;      
+if(products!=null)products.sort();      
+if(addedproducts!=null)addedproducts.sort();        
+previousSortBy=sortBy;      
+        
+} catch(exception e){
+ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO,'There is some error while processing your request, please reach system administrator '));
+}   
+}    
+}
