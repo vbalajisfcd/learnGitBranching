@@ -1,0 +1,356 @@
+<apex:page standardController="System_Estimate__c" extensions="ctrlSystemCustomerAccepted">
+   <apex:stylesheet value="{!URLFOR($Resource.slds, 'assets/styles/salesforce-lightning-design-system.css')}" />
+<link rel="stylesheet" href="{!URLFOR($Resource.bootstrapdemoplugins, 'bootstrap/css/bootstrap.css')}" media="all" />
+<apex:includeLightning />
+    <script>
+ function selectAllCheckboxes(obj,receivedInputID){
+ 
+            var inputCheckBox = document.getElementsByTagName("input");
+            for(var i=0; i<inputCheckBox.length; i++){
+                if(inputCheckBox[i].id.indexOf(receivedInputID)!=-1){
+                    inputCheckBox[i].checked = obj.checked;
+                }
+            }
+        }
+       
+        function doCheckboxChange(cb,itemId){
+
+        if(cb.checked==true){
+            aSelectItem(itemId);
+        }
+        else{
+            aDeselectItem(itemId);
+        } 
+        }
+       function myJavascriptFunc()
+    {
+     var inputCheckBox = document.getElementsByTagName("input");
+     if (inputCheckBox.getAttribute("disabled")==true){
+        alert('testing');
+       }
+    }
+    
+</script>    
+
+
+
+
+
+
+<style>
+#pageblockTable th {
+    font-weight: bold !important;
+}
+.body .bPageBlock .pbBody .labelCol, body .print .topics-label {
+  font-weight: bold !important;
+  color: #4a4a56;
+}
+
+.bPageBlock .detailList .dataCol{
+color:#4a4a56;
+
+}
+
+
+
+.spinnerCt {
+    left: 50%;
+    position: fixed;
+    top: 35%;
+    z-index: 1050;
+    padding: 20px 40px;
+    box-shadow: 0pt 2px 5px rgb(172, 172, 172);
+    border-radius: 1em 1em 1em 1em;
+    border: 1px solid rgb(206, 236, 255);
+    background-color: rgb(206, 236, 255);
+    background-style: solid;
+}
+
+.spinner {
+    padding: 10px 15px 10px 0pt;
+    vertical-align: middle;F
+    float: left
+}
+.bPageBlock .dataCol{
+    padding-right:0px;
+}
+.spinnerCt .loadingIndicator {
+    display: inline;
+    font-size: 135%;
+    font-weight: bold;
+    float: left
+}
+
+.pbSubheader
+{
+margin-top:0px;
+}
+
+</style>
+ 
+  <apex:form id="sysheaderlist" rendered="{!$User.UiTheme!='Theme4t'}" > 
+  <apex:actionStatus id="statusDis">
+        <apex:facet name="start">
+            <div class="spinnerMask" id="spinnerMask">
+                <div class="spinnerCt">
+                    <img src="/img/analytics/reportbuilder/icons/spinner32.gif" alt="Loading..." width="32" height="32" class="spinner" title="Loading..." />
+                    <div class="loadingIndicator">Loading...</div>
+                </div>
+                <div class="mask"></div>
+            </div>
+        </apex:facet>
+       
+      </apex:actionStatus>
+         <apex:outputPanel >
+            <Apex:pageMessages ></Apex:pageMessages>
+           &nbsp;&nbsp;&nbsp;&nbsp;
+            <center>
+            
+            <apex:commandButton action="{!cancel}" value="Back To System Estimate" rendered="{!check}"/>
+            </center>
+            
+        </apex:outputPanel>
+ <apex:pageBlock title="System Estimate Details" rendered="{!NOT(check)}">
+  
+   <apex:pageBlockSection columns="2" >
+    <apex:outputField value="{!quoteVar.name}"/>
+    <apex:outputField value="{!quoteVar.Account_Name__c}"/>
+    <apex:outputField value="{!quoteVar.Opportunity_Name__c}"/>
+    <apex:inputField value="{!quoteVar.Reference_Number__c}"  rendered="{!quoteVar.Opportunity_Name__r.Physical_Country__c=='Indonesia'}" />
+    </apex:pageBlockSection>  
+    </apex:pageBlock>
+   
+    <apex:pageBlock title="System Lines" rendered="{!ViewWrapper.size>0 && sysd}">
+    <apex:pageBlockButtons >
+ 
+  <apex:commandButton value="Next" rendered="{!ViewWrapper.size>0}" action="{!QuoteProcess}" rerender="sysheaderlist" >
+     
+     </apex:commandButton> <apex:commandButton value="Cancel" action="{!cancel}" />
+   </apex:pageBlockButtons>
+    <apex:repeat var="vw" value="{!ViewWrapper}">    
+   
+     <apex:pageBlockSection collapsible="true" columns="1" title="{!vw.systemEstimateItem.name}" id="pbs2" >
+        <apex:pageblockTable var="a" value="{!vw}">
+     <apex:column width="2%" > <apex:inputCheckbox value="{!a.selected}" rendered="{!NOT(vw.innerList.size>0)}">  
+     
+
+       </apex:inputCheckbox> </apex:column>
+    
+     <apex:column value="{!a.systemEstimateItem.name}" width="40%"/>
+     <apex:column value="{!a.systemEstimateItem.System_ID__c}" width="10%" />
+     <apex:column value="{!a.systemEstimateItem.Product_Category__c}" width="10%"/>
+     <apex:column value="{!a.systemEstimateItem.List_Price__c}" width="10%"/>
+     <apex:column value="{!a.systemEstimateItem.UOM__c}" width="5%"/>
+     <apex:column value="{!a.systemEstimateItem.Quantity__c}" width="8%"/>
+     <apex:column value="{!a.systemEstimateItem.Sub_Total__c}" width="20%"/>
+     
+     </apex:pageblockTable>
+     <apex:pageblockTable var="a" value="{!vw.innerList}" rendered="{!vw.innerList.size>0}">
+     <apex:column width="2%"> <apex:facet name="header">
+           <apex:inputCheckbox > <apex:actionSupport action="{!disableAccess}" event="onchange" reRender="pbs2" status="statusDis" >       
+               <apex:param name="SelectedSystemId" value="{!vw.systemEstimateItem.id}" assignTo="{!SelectedSystemId}"/>               
+               </apex:actionSupport>
+               </apex:inputCheckbox>
+              </apex:facet>
+              <apex:inputCheckbox value="{!a.selected}" />
+        </apex:column>
+     
+     <apex:column value="{!a.sei.Product_Name__c}" width="40%" />
+     <apex:column value="{!a.sei.Product_ID__c}" width="10%" />
+     <apex:column value="{!a.sei.Product_Category__c}" width="10%"/>
+     <apex:column value="{!a.sei.List_Price__c}" width="10%"/>
+     <apex:column value="{!a.sei.UoM__c}" width="5%"/>
+     <apex:column value="{!a.sei.Quantity__c}" width="8%"/>
+     <apex:column value="{!a.sei.Sub_total__c}" width="20%"/>
+     </apex:pageBlockTable>
+     </apex:pageBlockSection> 
+     
+    
+   
+     <script> twistSection(document.getElementById('{!$Component.pbs2}').getElementsByTagName('img')[0]) </script>
+  
+     </apex:repeat>
+     </apex:pageBlock> 
+    <apex:outputPanel id="out">
+    <apex:pageBlock id="pb1" title="Add Spec Performance" rendered="{!page1}">
+  <apex:pageMessages > </apex:pageMessages>
+                 <apex:pageBlockButtons >
+                
+               <apex:commandButton value="Customer Accepted"  action="{!savedata}" />
+               <apex:commandButton value="Back"  action="{!Back}"/>
+               <apex:commandButton value="Cancel"  action="{!cancel}" />
+             
+            </apex:pageBlockButtons>
+            <apex:pageBlock rendered="{!var}">
+          <apex:pageMessage severity="Info" detail="{!$Label.SpecPerformanceOther1}" strength="2"/>
+          </apex:pageBlock>
+
+           <apex:repeat var="vw" value="{!specslist}">    
+            <apex:pageblocktable value="{!vw}" var="a" styleClass="slds-table--bordered slds-table--col-bordered slds-table .slds-cell-buffer--left slds-table--bordered thead > tr + tr > th ">
+                            <apex:column headervalue="Product Category        " value="{!a.productcategory}" width="25%"/>
+                            <apex:column headervalue="Product Category L1 Name"  value="{!a.productcategory1}" width="25%"/>
+                            <apex:column headervalue="Product Category L2 Name" value="{!a.productcategory2}" width="25%"/>
+                            <apex:column headervalue="Spec Position" width="25%">
+                            <apex:selectList value="{!a.specval}" multiselect="false" size="1" >
+                            <apex:selectOptions value="{!a.specvalue}"> </apex:selectOptions>
+                            </apex:selectList></apex:column>
+             </apex:pageblocktable>
+                                 <div class="slds-scrollable--x">   
+                                <apex:pageBlockSection collapsible="true" columns="1" title="Opportunity Products" id="pd"  >
+                                <apex:pageblocktable value="{!vw.plist}" var="p" >
+                                <apex:column headervalue="System List Name" value="{!p.System_List__c}" width="20%"/>
+                                <apex:column headervalue="Product Name"  value="{!p.name}" width="20%"/>
+                                <apex:column headervalue="Product Id" value="{!p.Product_Id__c}" width="20%"/>
+                                 <apex:column headervalue="UOM" value="{!p.UoM__c}" width="20%"/>
+                                <apex:column headervalue="Quantity" value="{!p.Quantity__c}" width="20%"/>
+                                </apex:pageblocktable>
+                                </apex:pageBlockSection><br/><br/></div>
+                                <script> twistSection(document.getElementById('{!$Component.pd}').getElementsByTagName('img')[0]) </script>
+                                </apex:repeat>
+           
+             
+            
+  </apex:pageBlock>                  
+ </apex:outputpanel>   
+    
+   
+    
+  </apex:form>
+  
+  <!------------------------------------------------ for sf1------------------------------------------------>
+  &nbsp;&nbsp;&nbsp;
+  <apex:form id="sysheaderlistsf1" rendered="{!$User.UiTheme=='Theme4t'}"> 
+    <div class="slds-scrollable">    
+  <apex:actionStatus id="statusDissf1">
+      <apex:facet name="start">
+            <div class="spinnerMask" id="spinnerMask">
+                <div class="spinnerCt">
+                    <img src="/img/analytics/reportbuilder/icons/spinner32.gif" alt="Loading..." width="32" height="32" class="spinner" title="Loading..." />
+                    <div class="loadingIndicator">Loading...</div>
+                </div>
+                <div class="mask"></div>
+            </div>
+        </apex:facet>
+      </apex:actionStatus>
+          <apex:outputPanel >
+            <Apex:pageMessages ></Apex:pageMessages>
+           &nbsp;&nbsp;&nbsp;&nbsp;
+            <center>
+            
+            <apex:commandButton action="{!cancel}" value="Back To System Estimate" rendered="{!check}"/>
+            </center>
+            
+        </apex:outputPanel>
+  &nbsp;&nbsp;
+  
+  <strong><apex:outputLabel value="System Estimate Details" styleClass="slds-text-heading--label"/></strong><br/><br/>
+  <apex:pageBlock rendered="{!NOT(check)}">
+  
+   &nbsp;&nbsp;
+   <apex:pageBlockSection columns="1" >
+    <apex:outputField value="{!quoteVar.name}"/><br/>
+    <apex:outputField value="{!quoteVar.Account_Name__c}"/><br/>
+    <apex:outputField value="{!quoteVar.Opportunity_Name__c}"/><br/>
+    <apex:inputField value="{!quoteVar.Reference_Number__c}"  rendered="{!quoteVar.Opportunity_Name__r.Physical_Country__c=='Indonesia'}" /><br/>
+    </apex:pageBlockSection>  <br/>
+    </apex:pageBlock><br/>
+    &nbsp;&nbsp;
+   <strong><apex:outputLabel value="System Lines" styleClass="slds-text-heading--label"/></strong><br/><br/>
+    <apex:pageBlock rendered="{!ViewWrapper.size>0 && sysd}">
+    <apex:pageBlockButtons >
+  <span id="Accepted" >
+  <apex:commandButton value="Next" rendered="{!ViewWrapper.size>0}" action="{!QuoteProcess}" styleClass="sf1buttonSFBlue sf1button " rerender="sysheaderlistsf1">
+  </apex:commandButton> </span>
+  <span id="Cancel" >
+  <apex:commandButton value="Cancel" action="{!cancel}" styleClass="sf1buttonSFBlue sf1button"/> </span>
+   </apex:pageBlockButtons><br/>
+    <apex:repeat var="vw" value="{!ViewWrapper}">    
+   &nbsp;&nbsp;
+ 
+   <apex:pageBlockSection collapsible="true" columns="1"  title="{!vw.systemEstimateItem.name}" id="pbs2sf1" >   
+   
+        <apex:pageblockTable var="a" value="{!vw}" styleClass="slds-table--bordered slds-table--col-bordered slds-table .slds-cell-buffer--left slds-table--bordered thead > tr + tr > th ">
+     
+     <apex:column width="3%" rendered="{!NOT(vw.innerList.size>0)}"> <apex:inputCheckbox value="{!a.selected}" > 
+       </apex:inputCheckbox> </apex:column>
+       
+     
+     <apex:column value="{!a.systemEstimateItem.name}" width="40%"/>
+     <apex:column value="{!a.systemEstimateItem.System_ID__c}" width="10%" />
+     <apex:column value="{!a.systemEstimateItem.Product_Category__c}" width="10%"/>
+     <apex:column value="{!a.systemEstimateItem.List_Price__c}" width="10%"/>
+     <apex:column value="{!a.systemEstimateItem.UOM__c}" width="5%"/>
+     <apex:column value="{!a.systemEstimateItem.Quantity__c}" width="8%"/>
+     <apex:column value="{!a.systemEstimateItem.Sub_Total__c}" width="20%"/>    
+     </apex:pageblockTable>
+     <br/>
+     
+     <apex:pageblockTable var="a" value="{!vw.innerList}" rendered="{!vw.innerList.size>0}" styleClass="slds-table--bordered slds-table--col-bordered slds-table .slds-cell-buffer--left slds-table--bordered thead > tr + tr > th ">
+     <apex:column width="3%"> <apex:facet name="header">
+           <apex:inputCheckbox > 
+           
+               </apex:inputCheckbox>
+              </apex:facet>
+              <apex:inputCheckbox value="{!a.selected}" />
+        </apex:column>
+     
+     <apex:column value="{!a.sei.Product_Name__c}" width="40%" />
+     <apex:column value="{!a.sei.Product_ID__c}" width="10%" />
+     <apex:column value="{!a.sei.Product_Category__c}" width="10%"/>
+     <apex:column value="{!a.sei.List_Price__c}" width="10%"/>
+     <apex:column value="{!a.sei.UoM__c}" width="5%"/>
+     <apex:column value="{!a.sei.Quantity__c}" width="8%"/>
+     <apex:column value="{!a.sei.Sub_total__c}" width="20%"/>
+     </apex:pageBlockTable>
+     
+     
+     
+    </apex:pageBlockSection>
+  
+     </apex:repeat>
+    </apex:pageBlock> 
+    </div>
+    
+        <apex:outputPanel id="out">
+    <apex:pageBlock id="pb1" title="Add Spec Performance" rendered="{!page1}">
+  <apex:pageMessages > </apex:pageMessages>
+                 <apex:pageBlockButtons >
+                
+               <apex:commandButton value="Customer Accepted"  action="{!savedata}" />
+               <apex:commandButton value="Back"  action="{!Back}"/>
+               <apex:commandButton value="Cancel"  action="{!cancel}" />
+             
+            </apex:pageBlockButtons>
+            <apex:pageBlock rendered="{!var}">
+          <apex:pageMessage severity="Info" detail="{!$Label.SpecPerformanceOther1}" strength="2"/>
+          </apex:pageBlock>
+
+           <apex:repeat var="vw" value="{!specslist}">    
+            <apex:pageblocktable value="{!vw}" var="a" styleClass="slds-table--bordered slds-table--col-bordered slds-table .slds-cell-buffer--left slds-table--bordered thead > tr + tr > th ">
+                            <apex:column headervalue="Product Category        " value="{!a.productcategory}" width="25%"/>
+                            <apex:column headervalue="Product Category L1 Name"  value="{!a.productcategory1}" width="25%"/>
+                            <apex:column headervalue="Product Category L2 Name" value="{!a.productcategory2}" width="25%"/>
+                            <apex:column headervalue="Spec Position" width="25%">
+                            <apex:selectList value="{!a.specval}" multiselect="false" size="1" >
+                            <apex:selectOptions value="{!a.specvalue}"> </apex:selectOptions>
+                            </apex:selectList></apex:column>
+             </apex:pageblocktable>
+                                 <div class="slds-scrollable--x">   
+                                <apex:pageBlockSection collapsible="true" columns="1" title="Opportunity Products" id="pd"  >
+                                <apex:pageblocktable value="{!vw.plist}" var="p" >
+                                <apex:column headervalue="System List Name" value="{!p.System_List__c}" width="20%"/>
+                                <apex:column headervalue="Product Name"  value="{!p.name}" width="20%"/>
+                                <apex:column headervalue="Product Id" value="{!p.Product_Id__c}" width="20%"/>
+                                <apex:column headervalue="UOM" value="{!p.UoM__c}" width="20%"/>
+                                <apex:column headervalue="Quantity" value="{!p.Quantity__c}" width="20%"/>
+                                </apex:pageblocktable>
+                                </apex:pageBlockSection></div>
+                                <!--<script> twistSection(document.getElementById('{!$Component.pd}').getElementsByTagName('img')[0]) </script>-->
+                                </apex:repeat>
+           
+             
+            
+  </apex:pageBlock>                  
+ </apex:outputpanel>     
+  </apex:form>
+</apex:page>
